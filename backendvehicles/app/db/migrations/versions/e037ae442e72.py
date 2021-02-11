@@ -94,7 +94,7 @@ def create_insurance_table() -> None:
     op.create_table(
         "insurance",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("number", sa.Text, index=True, unique=True),
+        sa.Column("number", sa.Text, index=True),
         sa.Column("expire_date", sa.DateTime),
         sa.Column("vehicle_id", sa.Integer, sa.ForeignKey('vehicles.id', ondelete="CASCADE")),
         sa.Column("insurance_company_id", sa.Integer, sa.ForeignKey('insurance_company.id')),
@@ -107,6 +107,12 @@ def create_insurance_table() -> None:
             ON insurance
             FOR EACH ROW
         EXECUTE PROCEDURE update_updated_at_column();
+        """
+    )
+    op.execute(
+        """
+        INSERT INTO insurance_company(id,name,email)
+        VALUES (0, 'Insurance Company Name', 'providevalidem@il.inc')
         """
     )
 
@@ -128,6 +134,7 @@ def create_role_vehicle_user_table() -> None:
         EXECUTE PROCEDURE update_updated_at_column();
         """
     )
+
 
 def upgrade() -> None:
     create_updated_at_trigger()

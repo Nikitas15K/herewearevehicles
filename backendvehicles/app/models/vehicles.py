@@ -25,14 +25,14 @@ class VehiclesModel(BaseModel):
 
 class VehiclesInDB(VehiclesModel, IDModelMixin, DateTimeModelMixin):
     sign: str
-    type: VehicleType = "car"
+    type: VehicleType
     model: str
     manufacture_year: int = Field(..., gt=1970, le = datetime.date.today().year)
 
 
 class VehiclesCreate(VehiclesModel):
     sign: constr(min_length=3, regex="[a-zA-Z0-9_-]+$")
-    type: VehicleType = "car"
+    type: VehicleType
     model: str
     manufacture_year: int = Field(..., gt=1970, le = datetime.date.today().year)
 

@@ -22,7 +22,7 @@ pytestmark = pytest.mark.asyncio
 def new_insurance():
     return InsuranceAdd(
         number="JA651914",
-        expire_date=2031-12-31
+        expire_date=2031-12-31,
     )
 
 
@@ -46,7 +46,7 @@ class TestAddInsurance:
         assert res.status_code == status.HTTP_201_CREATED
 
         created_vehicle = VehiclesPublic(**res.json())
-        vehicle_insurance = await insurance_repo.get_insurance_by_vehicle_id(vehicle_id=created_vehicle.id)
+        vehicle_insurance = await insurance_repo.get_newer_insurance_by_vehicle_id(vehicle_id=created_vehicle.id)
         assert vehicle_insurance is not None
         assert isinstance(vehicle_insurance, InsuranceInDB)  
 
@@ -62,21 +62,3 @@ class TestAddInsurance:
     
         added_insurance = InsuranceAdd(**res.json())
         assert added_insurance == new_insurance
-
-    @pytest.mark.parametrize(
-        "invalid_payload, status_code",
-        (
-                (None, 422),
-                ({}, 422),
-                ({"number": "test_name"}, 422),
-                ({"expire_date": 1640993759}, 422),
-                ({"number": "test_name", "expire_date": 1640993759}, 422),
-        ),
-    )
-    async def test_invalid_input_raises_error(
-            self, app: FastAPI, client: AsyncClient, invalid_payload: dict, status_code: int
-    ) -> None:
-        res = await client.post(
-            app.url_path_for("insurance: add-insurance"), json={"new_insurance": invalid_payload}
-        )
-        assert res.status_code == status_code

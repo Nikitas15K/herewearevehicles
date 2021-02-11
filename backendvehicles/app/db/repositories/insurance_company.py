@@ -15,10 +15,10 @@ GET_INSURANCE_COMPANY_BY_ID_QUERY = """
     WHERE id = :id;
 """
 
-GET_INSURANCE_COMPANY_BY_EMAIL_QUERY = """
+GET_INSURANCE_COMPANY_BY_NAME_QUERY = """
     SELECT id, name, email, created_at, updated_at
     FROM insurance_company
-    WHERE email = :email;
+    WHERE name = :name;
 """
 
 
@@ -42,8 +42,8 @@ class InsuranceCompanyRepository(BaseRepository):
             return None
         return InsuranceCompanyInDB(**insurance_company)
 
-    async def get_insurance_company_by_email(self, *, email: EmailStr) -> InsuranceCompanyInDB:
-        insurance_company = await self.db.fetch_one(query=GET_INSURANCE_COMPANY_BY_EMAIL_QUERY, values={"email": email})
+    async def get_insurance_company_by_name(self, *, name: str) -> InsuranceCompanyInDB:
+        insurance_company = await self.db.fetch_one(query=GET_INSURANCE_COMPANY_BY_NAME_QUERY, values={"name": name})
         if not insurance_company:
             return None
         return InsuranceCompanyInDB(**insurance_company)
