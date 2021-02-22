@@ -47,11 +47,11 @@ async def get_expire_last_insurance_by_vehicle_id(vehicle_id : int = Path(..., g
     
 
 @router.put("/{id}/", response_model=InsurancePublic, name="insurance:update-insurance-by-id")
-async def update_insurance_by_id(id : int = Path(..., ge=1, title="The ID of the insurance to update."),
+async def update_insurance_by_id(id : int,
     insurance_update: InsuranceUpdate = Body(..., embed=True),
     insurances_repo: InsuranceRepository = Depends(get_repository(InsuranceRepository)),
     ) -> InsurancePublic:
-    insurance = await insurances_repo.update_last_created_insurance(vehicle_id=id, insurance_update = insurance_update)
+    insurance = await insurances_repo.update_insurance_by_id(id=id, insurance_update = insurance_update)
     return insurance
 
 # @router.get("/vehicleinsurance/{id}/", response_model=VehiclesPublic, name="insurance:get-vehicle-by-insurance-id")

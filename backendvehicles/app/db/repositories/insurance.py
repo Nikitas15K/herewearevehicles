@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from fastapi import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
 from app.models.vehicles import VehiclesPublic, VehiclesInDB
@@ -15,9 +16,15 @@ CREATE_INSURANCE_FOR_VEHICLE_QUERY = """
 GET_EXPIRE_LAST_INSURANCE_BY_VEHICLE_ID_QUERY = """
     SELECT id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at
     FROM insurance
-    WHERE vehicle_id = :vehicle_id
+    WHERE vehicle_id = :vehicle_id AND expire_date is not null
     ORDER BY expire_date DESC
     LIMIT 1;
+"""
+
+GET_INSURANCE_BY_ID_QUERY = """
+    SELECT id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at
+    FROM insurance
+    WHERE id = :id;
 """
 
 GET_LAST_CREATED_INSURANCE_BY_VEHICLE_ID_QUERY = """
@@ -38,7 +45,16 @@ UPDATE_INSURANCE_BY_ID_QUERY="""
     SET number = :number,
         expire_date = :expire_date,
         insurance_company_id = :insurance_company_id
-    WHERE vehicle_id = : vehicle_id
+    WHERE vehicle_id = :vehicle_id
+    RETURNING id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at;
+    """
+
+UPDATE_INSURANCE_BY_ID_QUERY="""
+    UPDATE insurance
+    SET number = :number,
+        expire_date = :expire_date,
+        insurance_company_id = :insurance_company_id
+    WHERE id = :id
     RETURNING id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at;
     """
 
@@ -55,7 +71,13 @@ class InsuranceRepository(BaseRepository):
     async def create_insurance_for_vehicle(self, *, insurance_create: InsuranceAdd) -> InsuranceInDB:
         created_insurance = await self.db.fetch_one(query=CREATE_INSURANCE_FOR_VEHICLE_QUERY, values=insurance_create.dict())
         return created_insurance
- 
+
+    async def get_insurance_by_id(self, *, id:int) -> InsuranceInDB:
+        insurance_record = await self.db.fetch_one(query=GET_INSURANCE_BY_ID_QUERY, values={"id": id})
+        if not insurance_record:
+            return None
+        return InsuranceInDB(**insurance_record)
+
     async def get_expire_last_insurance_by_vehicle_id(self, *, vehicle_id: int) -> InsuranceInDB:
         insurance_record = await self.db.fetch_one(query=GET_EXPIRE_LAST_INSURANCE_BY_VEHICLE_ID_QUERY, values={"vehicle_id": vehicle_id})
         if not insurance_record:
@@ -77,17 +99,32 @@ class InsuranceRepository(BaseRepository):
         insurances_records = await self.db.fetch_all(query=GET_ALL_INSURANCES_QUERY)
         return [InsuranceInDB(**l) for l in insurances_records]
 
-    async def update_last_created_insurance(self, *, vehicle_id: int, insurance_update: InsuranceUpdate) -> InsuranceInDB:
-        insurance = await self.get_last_created_insurance_by_vehicle_id(vehicle_id=vehicle_id)
+    async def update_insurance_by_id(self, *, id, insurance_update: InsuranceUpdate) -> InsuranceInDB:
+        insurance = await self.get_insurance_by_id(id=id)
         if not insurance:
             return None
         insurance_update_params = insurance.copy(update=insurance_update.dict(exclude_unset=True))
-
         try:
-            
             updated_insurance = await self.db.fetch_one(
-                query=UPDATE_INSURANCE_BY_ID_QUERY, values=insurance_update_params.dict(exclude={"vehicle_id", "created_at", "updated_at"})
-            )
+                query=UPDATE_INSURANCE_BY_ID_QUERY, 
+                values= insurance_update_params.dict(exclude={"vehicle_id","created_at", "updated_at"}),
+                )
+            return InsuranceInDB(**updated_insurance)
+        except Exception as e:
+            print(e)
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
+
+    async def update_last_created_insurance(self, *, vehicle_id, insurance_update: InsuranceUpdate) -> InsuranceInDB:
+        insurance = await self.get_last_created_insurance_by_vehicle_id(vehicle_id=vehicle_id)
+        
+        if not insurance:
+            return None
+        insurance_update_params = insurance.copy(update=insurance_update.dict(exclude_unset=True))
+        try:
+            updated_insurance = await self.db.fetch_one(
+                query=UPDATE_INSURANCE_BY_ID_QUERY, 
+                values= insurance_update_params.dict(exclude={"id","created_at", "updated_at"}),
+                )
             return InsuranceInDB(**updated_insurance)
         except Exception as e:
             print(e)

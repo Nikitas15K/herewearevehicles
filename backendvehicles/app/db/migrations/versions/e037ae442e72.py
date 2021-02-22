@@ -135,6 +135,45 @@ def create_role_vehicle_user_table() -> None:
         """
     )
 
+def create_accident_table() -> None:
+    op.create_table(
+        "accident",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("date", , sa.DateTime, nullable=False),
+        sa.Column("longitude", sa.Float, nullable=False),
+        sa.Column("latitude", sa.Float, nullable=False),
+        *timestamps(),
+    )
+    op.execute(
+        """
+        CREATE TRIGGER update_accident_modtime
+            BEFORE UPDATE
+            ON accident
+            FOR EACH ROW
+        EXECUTE PROCEDURE update_updated_at_column();
+        """
+
+    )
+
+def create_accident_statement_table() -> None:
+    op.create_table(
+        "accident_statement",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("vehicle_sign", , sa.DateTime, nullable=False),
+        sa.Column("longitude", sa.Float, nullable=False),
+        sa.Column("latitude", sa.Float, nullable=False),
+        *timestamps(),
+    )
+    op.execute(
+        """
+        CREATE TRIGGER update_accident_modtime
+            BEFORE UPDATE
+            ON accident
+            FOR EACH ROW
+        EXECUTE PROCEDURE update_updated_at_column();
+        """
+
+    )
 
 def upgrade() -> None:
     create_updated_at_trigger()

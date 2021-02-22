@@ -1,4 +1,5 @@
 from typing import Optional
+from enum import Enum
 from pydantic import BaseModel
 from app.models.core import DateTimeModelMixin,IDModelMixin
 
@@ -23,10 +24,10 @@ class RoleUpdate(RoleBase):
 class RoleInDB(IDModelMixin, DateTimeModelMixin, RoleBase):
     user_id: int
     vehicle_id: int
-    role: [RoleType] 
+    role: RoleType 
 
 
-class RolePublic(IDModelMixin, DateTimeModelMixin, RoleInDB):
+class RolePublic(RoleInDB):
     pass
 
 

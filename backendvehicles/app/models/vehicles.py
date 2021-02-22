@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, constr
 from enum import Enum
 from app.models.core import DateTimeModelMixin, IDModelMixin
 from app.models.insurance import InsurancePublic
+from app.models.roles import RolePublic
 import datetime
 from typing import Optional
 
@@ -41,3 +42,4 @@ class VehiclesCreate(VehiclesModel):
 
 class VehiclesPublic(VehiclesModel, IDModelMixin, DateTimeModelMixin):
     insurance: Optional[InsurancePublic]
+    roles: Optional[RolePublic]
