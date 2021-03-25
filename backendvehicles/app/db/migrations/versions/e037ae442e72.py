@@ -96,6 +96,7 @@ def create_insurance_table() -> None:
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("number", sa.Text, index=True),
         sa.Column("expire_date", sa.DateTime),
+        sa.Column("damage_coverance", sa.Boolean(), nullable=False, server_default="False"),
         sa.Column("vehicle_id", sa.Integer, sa.ForeignKey('vehicles.id', ondelete="CASCADE")),
         sa.Column("insurance_company_id", sa.Integer, sa.ForeignKey('insurance_company.id')),
         *timestamps(),
@@ -135,13 +136,26 @@ def create_role_vehicle_user_table() -> None:
         """
     )
 
+def create_city_table() -> None:
+    op.create_table(
+        "city",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("city", sa.Text, nullable=False),
+        sa.Column("lat", sa.Float, nullable=False),
+        sa.Column("lng", sa.Float, nullable=False),
+        sa.Column("country", sa.Text, nullable=False),
+    )
+
 def create_accident_table() -> None:
     op.create_table(
         "accident",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("date", , sa.DateTime, nullable=False),
-        sa.Column("longitude", sa.Float, nullable=False),
-        sa.Column("latitude", sa.Float, nullable=False),
+        sa.Column("date", sa.DateTime, nullable=False),
+        sa.Column("city_id", sa.Integer, sa.ForeignKey('city.id')),
+        sa.Column("address", sa.Text, nullable = False),
+        sa.Column("injuries", sa.Text, nullable = True),
+        sa.Column("road_problems", sa.Text, nullable = True),
+        sa.Column("closed_case", sa.Boolean(), nullable=False, server_default="False"),
         *timestamps(),
     )
     op.execute(
@@ -159,21 +173,46 @@ def create_accident_statement_table() -> None:
     op.create_table(
         "accident_statement",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("vehicle_sign", , sa.DateTime, nullable=False),
-        sa.Column("longitude", sa.Float, nullable=False),
-        sa.Column("latitude", sa.Float, nullable=False),
+        sa.Column("user_id", sa.Integer, nullable=False),
+        sa.Column("accident_id", sa.Integer, sa.ForeignKey('accident.id', ondelete="CASCADE")),
+        sa.Column("vehicle_id", sa.Integer, sa.ForeignKey('vehicles.id', ondelete="CASCADE")),
+        sa.Column("caused_by", sa.Text),
+        sa.Column("comments", sa.Text),
         *timestamps(),
     )
     op.execute(
         """
-        CREATE TRIGGER update_accident_modtime
+        CREATE TRIGGER update_accident_statement_modtime
             BEFORE UPDATE
             ON accident
             FOR EACH ROW
         EXECUTE PROCEDURE update_updated_at_column();
         """
-
     )
+
+def create_temporary_driver_table() -> None:
+    op.create_table(
+        "temporary_accident_driver_data",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("accident_id", sa.Integer, sa.ForeignKey('accident.id', ondelete="CASCADE")),
+        sa.Column("driver_full_name", sa.Text, nullable=False),
+        sa.Column("driver_email", sa.Text, nullable=False),
+        sa.Column("vehicle_sign", sa.Text, nullable=False),
+        sa.Column("insurance_number", sa.Text, nullable=False),
+        sa.Column("insurance_email", sa.Text, nullable=False),
+        *timestamps(),
+    )
+    op.execute(
+        """
+        CREATE TRIGGER update_temporary_accident_modtime
+            BEFORE UPDATE
+            ON accident
+            FOR EACH ROW
+        EXECUTE PROCEDURE update_updated_at_column();
+        """
+    )
+
+
 
 def upgrade() -> None:
     create_updated_at_trigger()
@@ -181,8 +220,16 @@ def upgrade() -> None:
     create_insurance_company_table()
     create_insurance_table()
     create_role_vehicle_user_table()
+    create_city_table()
+    create_accident_table()
+    create_accident_statement_table()
+    create_temporary_driver_table()
 	
 def downgrade() -> None:
+    op.drop_table("temporary_accident_driver_data")
+    op.drop_table("accident_statement")
+    op.drop_table("accident")
+    op.drop_table("city")
     op.drop_table("roles")
     op.drop_table('insurance')
     op.drop_table('insurance_company')

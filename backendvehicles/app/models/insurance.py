@@ -10,21 +10,24 @@ class InsuranceModel(BaseModel):
     """
     number: Optional[str]
     expire_date: Optional[date]
+    damage_coverance: bool = False
     insurance_company_id: Optional[int] = Field(..., ge=0)
 
 
 class InsuranceAdd(InsuranceModel):
+    number: str
+    expire_date: Optional[date]
     vehicle_id: int
-    insurance_company_id: int = 0
-    number = "ADD INSURANCE"
+    damage_coverance: bool
+    insurance_company_id: int 
     
 class InsuranceUpdate(InsuranceModel):
     pass
-
 
 class InsuranceInDB(IDModelMixin, DateTimeModelMixin, InsuranceModel):
     insurance_company_id: int = Field(..., ge=0)
     vehicle_id: int
 
 class InsurancePublic(InsuranceInDB):
+    insurance_company: Optional[InsuranceCompanyPublic]
     pass

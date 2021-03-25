@@ -12,6 +12,7 @@ from starlette.status import (
 from app.models.vehicles import VehiclesCreate, VehiclesPublic
 from app.models.insurance import InsurancePublic, InsuranceAdd, InsuranceUpdate
 from app.models.users import UserPublic, UserInDB
+from app.models.roles import RolePublic, RoleUpdate
 from app.db.repositories.vehicles import VehiclesRepository
 from app.db.repositories.insurance import InsuranceRepository
 from app.db.repositories.roles import RolesRepository
@@ -22,22 +23,25 @@ router = APIRouter()
 
 @router.get("/all", response_model= List[dict], name="vehicles:get-all-vehicles")
 async def get_all_vehicles(
+        current_user: UserPublic = Depends(get_current_active_user),
         vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository))
 ) -> List[dict]:
-    return await vehicles_repo.get_all_vehicles()
+    if current_user.is_superuser:
+        return await vehicles_repo.get_all_vehicles()
+    else:
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="No access")
 
-@router.get("/valid/", response_model= List[dict], name="vehicles:get-all-vehicles-with-valid-insurance")
-async def get_all_vehicles_with_valid_insurance(
+@router.get("/newest/", response_model= List[dict], name="vehicles:get-all-vehicles-with-newest-insurance")
+async def get_all_vehicles_with_newest_insurance(
         vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository))
 ) -> List[dict]:
-    return await vehicles_repo.get_all_vehicles_with_valid_insurance()
+    return await vehicles_repo.get_all_vehicles_with_newest_insurance()
 
 @router.post("/", response_model=VehiclesPublic, name="vehicles:create-vehicle", status_code=HTTP_201_CREATED)
 async def create_new_vehicle(
     current_user: UserPublic = Depends(get_current_active_user),
     new_vehicle: VehiclesCreate = Body(..., embed=True),
     vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
-    roles_repo: RolesRepository = Depends(get_repository(RolesRepository))
 ) -> VehiclesPublic:
     created_vehicle = await vehicles_repo.create_vehicle(new_vehicle=new_vehicle, id = current_user.id)
     return created_vehicle
@@ -48,7 +52,7 @@ async def get_vehicle_by_id(id: int,
     vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
     roles_repo: RolesRepository = Depends(get_repository(RolesRepository)))\
                                         -> VehiclesPublic:
-    vehicle = await vehicles_repo.get_vehicle_by_id(id=id)
+    vehicle = await vehicles_repo.get_vehicle_by_id(id=id, user_id = current_user.id)
 
     if not vehicle:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No vehicle found with that id")
@@ -57,15 +61,15 @@ async def get_vehicle_by_id(id: int,
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Please select one of your vehicles")
     return vehicle
 
-@router.get("/mod/{sign}/", response_model=VehiclesPublic, name="vehicles:get-vehicle-by-sign")
-async def get_vehicle_by_sign(sign: str, vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)))\
-                                        -> VehiclesPublic:
-    vehicle = await vehicles_repo.get_vehicle_by_sign(sign=sign)
+# @router.get("/mod/{sign}/", response_model=VehiclesPublic, name="vehicles:get-vehicle-by-sign")
+# async def get_vehicle_by_sign(sign: str, vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)))\
+#                                         -> VehiclesPublic:
+#     vehicle = await vehicles_repo.get_vehicle_by_sign(sign=sign)
 
-    if not vehicle:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No vehicle found with that id")
+#     if not vehicle:
+#         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No vehicle found with that id")
 
-    return vehicle
+#     return vehicle
 
 @router.get("/", response_model= List, name="vehicles:get-all-vehicles-by-id")
 async def get_all_vehicles_by_id(
@@ -77,8 +81,46 @@ async def get_all_vehicles_by_id(
 
 @router.put("/{vehicle_id}/insurance", response_model=InsurancePublic, name="insurance:update-insurance-by-vehicle-id")
 async def update_insurance_by_vehicle_id(vehicle_id : int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
     insurance_update: InsuranceUpdate = Body(..., embed=True),
-    insurances_repo: InsuranceRepository = Depends(get_repository(InsuranceRepository)),
+    insurances_repo: InsuranceRepository = Depends(get_repository(InsuranceRepository))
     ) -> InsurancePublic:
+    vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
+
+    if not vehicle:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
+
     insurance = await insurances_repo.update_last_created_insurance(vehicle_id= vehicle_id, insurance_update = insurance_update)
     return insurance
+
+@router.post("/{vehicle_id}/insurance", response_model=InsurancePublic, name="insurance:create-insurance-by-vehicle-id")
+async def create_insurance_by_vehicle_id(vehicle_id : int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
+    new_insurance: InsuranceAdd = Body(..., embed=True),
+    insurances_repo: InsuranceRepository = Depends(get_repository(InsuranceRepository))
+    ) -> InsurancePublic:
+    vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
+
+    if not vehicle:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
+
+    insurance = await insurances_repo.create_insurance_for_vehicle(new_insurance= new_insurance, vehicle_id = vehicle_id)
+    return insurance
+
+
+@router.put("/{vehicle_id}/role", response_model=RolePublic, name="role:update-role-by-vehicle-id")
+async def update_role_by_vehicle_id(vehicle_id : int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
+    role_update: RoleUpdate = Body(..., embed=True),
+    roles_repo: RolesRepository = Depends(get_repository(RolesRepository))
+    ) -> RolePublic:
+    vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
+
+    if not vehicle:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
+
+    role = await roles_repo.update_role(vehicle_id = vehicle_id, role_update = role_update)
+    return role

@@ -1,20 +1,28 @@
 from typing import List
-from datetime import datetime
+import datetime
 from fastapi import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
 from app.models.vehicles import VehiclesPublic, VehiclesInDB
 from app.db.repositories.base import BaseRepository
-from app.models.insurance import InsuranceAdd, InsuranceUpdate, InsuranceInDB
+from app.db.repositories.insurance_company import InsuranceCompanyRepository
+from app.models.insurance import InsuranceAdd, InsuranceUpdate, InsuranceInDB, InsurancePublic
+from databases import Database
 
 
 CREATE_INSURANCE_FOR_VEHICLE_QUERY = """
-     INSERT INTO insurance (number, expire_date, vehicle_id, insurance_company_id)
-     VALUES (:number, :expire_date, :vehicle_id, :insurance_company_id)
+     INSERT INTO insurance (number, expire_date, damage_coverance, vehicle_id, insurance_company_id)
+     VALUES (:number, :expire_date, :damage_coverance, :vehicle_id, :insurance_company_id)
+     RETURNING id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at;
+"""
+
+CREATE_FIRST_INSURANCE_FOR_VEHICLE_QUERY = """
+     INSERT INTO insurance (number, expire_date, damage_coverance, vehicle_id, insurance_company_id)
+     VALUES ('ADD INSURANCE', '2000-01-01', 'False', :vehicle_id, 0)
      RETURNING id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at;
 """
 
 GET_EXPIRE_LAST_INSURANCE_BY_VEHICLE_ID_QUERY = """
-    SELECT id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at
+    SELECT id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at
     FROM insurance
     WHERE vehicle_id = :vehicle_id AND expire_date is not null
     ORDER BY expire_date DESC
@@ -22,13 +30,13 @@ GET_EXPIRE_LAST_INSURANCE_BY_VEHICLE_ID_QUERY = """
 """
 
 GET_INSURANCE_BY_ID_QUERY = """
-    SELECT id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at
+    SELECT id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at
     FROM insurance
     WHERE id = :id;
 """
 
 GET_LAST_CREATED_INSURANCE_BY_VEHICLE_ID_QUERY = """
-    SELECT id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at
+    SELECT id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at
     FROM insurance
     WHERE vehicle_id = :vehicle_id
     ORDER BY id DESC
@@ -36,26 +44,28 @@ GET_LAST_CREATED_INSURANCE_BY_VEHICLE_ID_QUERY = """
 """
 
 GET_ALL_INSURANCES_QUERY = """
-    SELECT id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at 
+    SELECT id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at 
     FROM insurance;  
 """
 
-UPDATE_INSURANCE_BY_ID_QUERY="""
+UPDATE_INSURANCE_BY_VEHICLE_ID_QUERY="""
     UPDATE insurance
     SET number = :number,
         expire_date = :expire_date,
+        damage_coverance = :damage_coverance,
         insurance_company_id = :insurance_company_id
     WHERE vehicle_id = :vehicle_id
-    RETURNING id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at;
+    RETURNING id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at;
     """
 
 UPDATE_INSURANCE_BY_ID_QUERY="""
     UPDATE insurance
     SET number = :number,
         expire_date = :expire_date,
+        damage_coverance = :damage_coverance,
         insurance_company_id = :insurance_company_id
     WHERE id = :id
-    RETURNING id, number, expire_date, vehicle_id, insurance_company_id, created_at, updated_at;
+    RETURNING id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at;
     """
 
 GET_VEHICLE_BY_INSURANCE_ID="""
@@ -66,10 +76,47 @@ GET_VEHICLE_BY_INSURANCE_ID="""
     WHERE i.id = :id;
 """
 
-class InsuranceRepository(BaseRepository):
+GET_VEHICLE_BY_INSURANCE_ID_QUERY = """
+SELECT v1.id, v1.sign, v1.type, v1.model, v1.manufacture_year, v1.created_at, v1.updated_at,
+        v1.insurance_id, v1.number, v1.expire_date, v1.damage_coverance, v1.insurance_company_id,
+        v1.insurance_create_at, v1.insurance_updated_at, r.role, r.user_id
+    FROM roles r
+    inner JOIN 
+        (SELECT v.id AS id, v.sign AS sign, v.type AS type, v.model AS model,
+		 v.manufacture_year AS manufacture_year,v.created_at AS created_at, v.updated_at AS updated_at,
+        i.id AS insurance_id, i.number AS number, i.expire_date AS expire_date, i.damage_coverance AS damage_coverance,
+		i.insurance_company_id AS insurance_company_id, i.created_at AS insurance_create_at,
+		i.updated_at AS insurance_updated_at
+        FROM vehicles v
+        INNER JOIN
+            insurance i
+        ON v.id = i.vehicle_id) 
+		AS v1     
+    ON v1.id = r.vehicle_id 
+    WHERE v1.insurance_id = :insurance_id
+"""
 
-    async def create_insurance_for_vehicle(self, *, insurance_create: InsuranceAdd) -> InsuranceInDB:
-        created_insurance = await self.db.fetch_one(query=CREATE_INSURANCE_FOR_VEHICLE_QUERY, values=insurance_create.dict())
+
+class InsuranceRepository(BaseRepository):
+    def __init__(self, db: Database) -> None:
+        super().__init__(db)
+        self.insurance_co_repo = InsuranceCompanyRepository(db) 
+
+    async def create_insurance_for_vehicle(self, *, new_insurance: InsuranceAdd , vehicle_id: int) -> InsuranceInDB:
+        insurance = await self.get_last_created_insurance_by_vehicle_id(vehicle_id=vehicle_id)
+        if insurance.expire_date and insurance.expire_date > datetime.date.today() :
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Wait current insurance expire")
+        if insurance.number == "ADD INSURANCE":
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Please update empty insurance registry")
+
+        query_values = new_insurance.dict(exclude_unset=True)
+        query_values["vehicle_id"] = vehicle_id
+        # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="You can only update selected vehicle.")
+        created_insurance = await self.db.fetch_one(query=CREATE_INSURANCE_FOR_VEHICLE_QUERY, values=query_values)
+        return created_insurance
+
+    async def create_first_insurance_for_vehicle(self, *, vehicle_id: int) -> InsuranceInDB:
+        created_insurance = await self.db.fetch_one(query=CREATE_FIRST_INSURANCE_FOR_VEHICLE_QUERY, values={"vehicle_id": vehicle_id})
         return created_insurance
 
     async def get_insurance_by_id(self, *, id:int) -> InsuranceInDB:
@@ -78,22 +125,26 @@ class InsuranceRepository(BaseRepository):
             return None
         return InsuranceInDB(**insurance_record)
 
-    async def get_expire_last_insurance_by_vehicle_id(self, *, vehicle_id: int) -> InsuranceInDB:
-        insurance_record = await self.db.fetch_one(query=GET_EXPIRE_LAST_INSURANCE_BY_VEHICLE_ID_QUERY, values={"vehicle_id": vehicle_id})
-        if not insurance_record:
-            return None
-        return InsuranceInDB(**insurance_record)
-
-    async def get_last_created_insurance_by_vehicle_id(self, *, vehicle_id: int) -> InsuranceInDB:
+    async def get_last_created_insurance_by_vehicle_id(self, *, vehicle_id: int, populate: bool = True) -> InsuranceInDB:
         insurance_record = await self.db.fetch_one(query=GET_LAST_CREATED_INSURANCE_BY_VEHICLE_ID_QUERY, values={"vehicle_id": vehicle_id})
         if not insurance_record:
             return None
-        return InsuranceInDB(**insurance_record)
+        else:
+            insurance = InsuranceInDB(**insurance_record)
+            if populate:
+                return await self.populate_insurance(insurance = insurance)
+        return insurance
 
-    async def add_insurance(self, *, new_insurance: InsuranceAdd) -> InsuranceInDB:
-        query_values = new_insurance.dict()
-        insurance = await self.db.fetch_one(query=ADD_INSURANCE_QUERY, values=query_values)
-        return InsuranceInDB(**insurance)
+    # async def get_expire_last_insurance_by_vehicle_id(self, *, vehicle_id: int) -> InsuranceInDB:
+    #     insurance_record = await self.db.fetch_one(query=GET_EXPIRE_LAST_INSURANCE_BY_VEHICLE_ID_QUERY, values={"vehicle_id": vehicle_id})
+    #     if not insurance_record:
+    #         return None
+    #     return InsuranceInDB(**insurance_record)
+
+    # async def add_insurance(self, *, new_insurance: InsuranceAdd) -> InsuranceInDB:
+    #     query_values = new_insurance.dict()
+    #     insurance = await self.db.fetch_one(query=ADD_INSURANCE_QUERY, values=query_values)
+    #     return InsuranceInDB(**insurance)
 
     async def get_all_insurances(self) -> List[InsuranceInDB]:
         insurances_records = await self.db.fetch_all(query=GET_ALL_INSURANCES_QUERY)
@@ -103,6 +154,10 @@ class InsuranceRepository(BaseRepository):
         insurance = await self.get_insurance_by_id(id=id)
         if not insurance:
             return None
+
+        if insurance.expire_date and insurance.expire_date > datetime.date.today() :
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Wait current insurance expire")
+    
         insurance_update_params = insurance.copy(update=insurance_update.dict(exclude_unset=True))
         try:
             updated_insurance = await self.db.fetch_one(
@@ -114,15 +169,19 @@ class InsuranceRepository(BaseRepository):
             print(e)
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
 
-    async def update_last_created_insurance(self, *, vehicle_id, insurance_update: InsuranceUpdate) -> InsuranceInDB:
-        insurance = await self.get_last_created_insurance_by_vehicle_id(vehicle_id=vehicle_id)
+    async def update_last_created_insurance(self, *, vehicle_id:int , insurance_update: InsuranceUpdate) -> InsuranceInDB:
+        insurance = await self.get_last_created_insurance_by_vehicle_id(vehicle_id=vehicle_id, populate = False)
         
         if not insurance:
             return None
+
+        if insurance.expire_date and insurance.expire_date > datetime.date.today() :
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Wait current insurance expire")
+        
         insurance_update_params = insurance.copy(update=insurance_update.dict(exclude_unset=True))
         try:
             updated_insurance = await self.db.fetch_one(
-                query=UPDATE_INSURANCE_BY_ID_QUERY, 
+                query=UPDATE_INSURANCE_BY_VEHICLE_ID_QUERY, 
                 values= insurance_update_params.dict(exclude={"id","created_at", "updated_at"}),
                 )
             return InsuranceInDB(**updated_insurance)
@@ -132,5 +191,13 @@ class InsuranceRepository(BaseRepository):
 
 
     async def get_vehicle_by_insurance_id(self, *, id=int) -> VehiclesPublic:
-        vehicle = await self.db.fetch_one(query=GET_VEHICLE_BY_INSURANCE_ID)
+        vehicle = await self.db.fetch_one(query=GET_VEHICLE_BY_INSURANCE_ID_QUERY)
         return vehicle
+
+    async def populate_insurance(self, *, insurance: InsuranceInDB) -> InsuranceInDB:
+        return InsurancePublic(
+            # unpack the vehicle in db instance,
+            **insurance.dict(),
+            # fetch the vehicle's insurance from the insurance_repo
+            insurance_company=await self.insurance_co_repo.get_insurance_company_by_id(id=insurance.insurance_company_id)
+        )

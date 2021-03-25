@@ -63,18 +63,6 @@ async def test_vehicle(db: Database) -> VehiclesInDB:
     return await vehicle_repo.create_vehicle(new_vehicle=new_vehicle)
 
 
-# @pytest.fixture
-# async def test_insurance(db: Database) -> InsuranceInDB:
-#     insurance_repo = InsuranceRepository(db)
-#     new_insurance = InsuranceAdd(
-#         number="JA651914",
-#         expire_date=2025-12-31,
-#         vehicle_id=1,
-#         insurance_company_id=1,
-#     )
-#     return await insurance_repo.add_insurance(new_insurance=new_insurance)
-
-
 @pytest.fixture
 async def test_insurance_company(db: Database) -> InsuranceCompanyInDB:
     insurance_company_repo = InsuranceCompanyRepository(db)
