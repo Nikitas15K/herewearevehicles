@@ -1,8 +1,8 @@
 import requests
 from typing import Optional
-from app.models.users import UserPublic, UserInDB
+from app.models.users import UserPublic, UserInDB, ProfilePublic
 from fastapi import Depends, HTTPException, status
-
+from pydantic import EmailStr
 
 class UsersRepository:
     def __init__(self):
@@ -21,3 +21,7 @@ class UsersRepository:
         current_user = UserPublic(**requests.request('GET', url=url, headers=self.get_headers(token)).json())
         return current_user
 
+    def get_other_user(self,*, token: str, user_id: int):
+        url = self.url + f'/api/profiles/{user_id}/'
+        other_user = ProfilePublic(**requests.request('GET', url=url, headers=self.get_headers(token)).json())
+        return other_user

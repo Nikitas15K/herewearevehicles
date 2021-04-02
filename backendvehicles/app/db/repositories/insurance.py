@@ -11,7 +11,7 @@ from databases import Database
 
 CREATE_INSURANCE_FOR_VEHICLE_QUERY = """
      INSERT INTO insurance (number, expire_date, damage_coverance, vehicle_id, insurance_company_id)
-     VALUES (:number, :expire_date, :damage_coverance, :vehicle_id, :insurance_company_id)
+     VALUES (UPPER(:number), :expire_date, :damage_coverance, :vehicle_id, :insurance_company_id)
      RETURNING id, number, expire_date, damage_coverance, vehicle_id, insurance_company_id, created_at, updated_at;
 """
 
@@ -50,7 +50,7 @@ GET_ALL_INSURANCES_QUERY = """
 
 UPDATE_INSURANCE_BY_VEHICLE_ID_QUERY="""
     UPDATE insurance
-    SET number = :number,
+    SET number = UPPER(:number),
         expire_date = :expire_date,
         damage_coverance = :damage_coverance,
         insurance_company_id = :insurance_company_id
@@ -60,7 +60,7 @@ UPDATE_INSURANCE_BY_VEHICLE_ID_QUERY="""
 
 UPDATE_INSURANCE_BY_ID_QUERY="""
     UPDATE insurance
-    SET number = :number,
+    SET number = UPPER(:number),
         expire_date = :expire_date,
         damage_coverance = :damage_coverance,
         insurance_company_id = :insurance_company_id

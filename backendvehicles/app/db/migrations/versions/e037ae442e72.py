@@ -8,7 +8,7 @@ Create Date: 2020-02-01 10:41:35.468471
 from typing import Tuple
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects.postgresql import BYTEA
 
 
 # revision identifiers, used by Alembic
@@ -117,6 +117,7 @@ def create_insurance_table() -> None:
         """
     )
 
+
 def create_role_vehicle_user_table() -> None:
     op.create_table(
         "roles",
@@ -144,6 +145,13 @@ def create_city_table() -> None:
         sa.Column("lat", sa.Float, nullable=False),
         sa.Column("lng", sa.Float, nullable=False),
         sa.Column("country", sa.Text, nullable=False),
+    )
+
+    op.execute(
+        """
+        INSERT INTO city(id,city,lat,lng,country)
+        VALUES (0, 'GALATSI', 38.01667, 23.75, 'GREECE')
+        """
     )
 
 def create_accident_table() -> None:
@@ -178,6 +186,8 @@ def create_accident_statement_table() -> None:
         sa.Column("vehicle_id", sa.Integer, sa.ForeignKey('vehicles.id', ondelete="CASCADE")),
         sa.Column("caused_by", sa.Text),
         sa.Column("comments", sa.Text),
+        sa.Column("diagram_sketch", BYTEA),
+        sa.Column("image", BYTEA),
         *timestamps(),
     )
     op.execute(
@@ -200,6 +210,7 @@ def create_temporary_driver_table() -> None:
         sa.Column("vehicle_sign", sa.Text, nullable=False),
         sa.Column("insurance_number", sa.Text, nullable=False),
         sa.Column("insurance_email", sa.Text, nullable=False),
+        sa.Column("answered", sa.Boolean(), nullable=False, server_default="False"),
         *timestamps(),
     )
     op.execute(

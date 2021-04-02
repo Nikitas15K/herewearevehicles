@@ -9,6 +9,7 @@ class Temporary_Data_Base(BaseModel):
     vehicle_sign: Optional[str]
     insurance_number: Optional[str]
     insurance_email: Optional[EmailStr]
+    answered: bool = False
 
 
 class Temporary_Data_Create(Temporary_Data_Base):

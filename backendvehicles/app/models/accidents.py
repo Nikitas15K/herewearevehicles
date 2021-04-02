@@ -5,7 +5,7 @@ from app.models.users import ProfilePublic
 from app.models.accident_statement import Accident_statement_Public
 from app.models.temporary_accident_driver_data import Temporary_Data_Public
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
 
 class AccidentModel(BaseModel):
@@ -31,6 +31,7 @@ class AccidentCreate(AccidentModel):
 
 
 class AccidentPublic(AccidentModel, IDModelMixin, DateTimeModelMixin):
-    accident_statement: Optional[Accident_statement_Public]
+    accident_statement: Optional[List[Accident_statement_Public]]
+    temporary_accident_drivers: Optional[List[Temporary_Data_Public]]
 
 

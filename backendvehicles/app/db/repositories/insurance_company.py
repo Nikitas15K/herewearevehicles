@@ -5,7 +5,7 @@ from app.models.insurance_company import InsuranceCompanyInDB, InsuranceCompanyC
 
 CREATE_INSURANCE_COMPANY_QUERY = """
     INSERT INTO insurance_company (name, email)
-    VALUES (:name, :email)
+    VALUES (UPPER(:name), :email)
     RETURNING id, name, email, created_at, updated_at;
 """
 
