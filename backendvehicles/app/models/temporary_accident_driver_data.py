@@ -20,7 +20,8 @@ class Temporary_Data_Create(Temporary_Data_Base):
     insurance_number: str
     insurance_email: EmailStr
 
-
+class Temporary_Data_Update(Temporary_Data_Base):
+    answered: bool
 
 class Temporary_Data_InDB(IDModelMixin, DateTimeModelMixin, Temporary_Data_Base):
     accident_id: int
@@ -29,6 +30,7 @@ class Temporary_Data_InDB(IDModelMixin, DateTimeModelMixin, Temporary_Data_Base)
     vehicle_sign: str
     insurance_number: str
     insurance_email: EmailStr
+    answered: bool
 
 
 class Temporary_Data_Public(Temporary_Data_InDB):

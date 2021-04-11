@@ -9,6 +9,7 @@ class InsuranceModel(BaseModel):
     ...
     """
     number: Optional[str]
+    start_date: Optional[date]
     expire_date: Optional[date]
     damage_coverance: bool = False
     insurance_company_id: Optional[int] = Field(..., ge=0)
@@ -16,6 +17,7 @@ class InsuranceModel(BaseModel):
 
 class InsuranceAdd(InsuranceModel):
     number: str
+    start_date: Optional[date]
     expire_date: Optional[date]
     vehicle_id: int
     damage_coverance: bool

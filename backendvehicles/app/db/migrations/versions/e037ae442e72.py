@@ -95,6 +95,7 @@ def create_insurance_table() -> None:
         "insurance",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("number", sa.Text, index=True),
+        sa.Column("start_date", sa.DateTime),
         sa.Column("expire_date", sa.DateTime),
         sa.Column("damage_coverance", sa.Boolean(), nullable=False, server_default="False"),
         sa.Column("vehicle_id", sa.Integer, sa.ForeignKey('vehicles.id', ondelete="CASCADE")),
@@ -159,7 +160,7 @@ def create_accident_table() -> None:
         "accident",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("date", sa.DateTime, nullable=False),
-        sa.Column("city_id", sa.Integer, sa.ForeignKey('city.id')),
+        sa.Column("city", sa.Text, nullable=False),
         sa.Column("address", sa.Text, nullable = False),
         sa.Column("injuries", sa.Text, nullable = True),
         sa.Column("road_problems", sa.Text, nullable = True),
@@ -184,17 +185,55 @@ def create_accident_statement_table() -> None:
         sa.Column("user_id", sa.Integer, nullable=False),
         sa.Column("accident_id", sa.Integer, sa.ForeignKey('accident.id', ondelete="CASCADE")),
         sa.Column("vehicle_id", sa.Integer, sa.ForeignKey('vehicles.id', ondelete="CASCADE")),
+        sa.Column("insurance_id", sa.Integer, sa.ForeignKey('insurance.id', ondelete="CASCADE")),
         sa.Column("caused_by", sa.Text),
         sa.Column("comments", sa.Text),
-        sa.Column("diagram_sketch", BYTEA),
-        sa.Column("image", BYTEA),
+        sa.Column("diagram_sketch", sa.Text),
+        # sa.Column("image", BYTEA),
         *timestamps(),
     )
     op.execute(
         """
         CREATE TRIGGER update_accident_statement_modtime
             BEFORE UPDATE
-            ON accident
+            ON accident_statement
+            FOR EACH ROW
+        EXECUTE PROCEDURE update_updated_at_column();
+        """
+    )
+
+def create_accident_statement_sketch_table() -> None:
+    op.create_table(
+        "accident_statement_sketch",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("statement_id", sa.Integer, sa.ForeignKey('accident_statement.id', ondelete="CASCADE")),
+        sa.Column("sketch", sa.Text),
+        *timestamps(),
+    )
+    op.execute(
+        """
+        CREATE TRIGGER update_accident_statement_sketch_modtime
+            BEFORE UPDATE
+            ON accident_statement_sketch
+            FOR EACH ROW
+        EXECUTE PROCEDURE update_updated_at_column();
+        """
+    )
+
+
+def create_accident_statement_image_table() -> None:
+    op.create_table(
+        "accident_statement_image",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("statement_id", sa.Integer, sa.ForeignKey('accident_statement.id', ondelete="CASCADE")),
+        sa.Column("image", BYTEA),
+        *timestamps(),
+    )
+    op.execute(
+        """
+        CREATE TRIGGER update_accident_statement_image_modtime
+            BEFORE UPDATE
+            ON accident_statement_image
             FOR EACH ROW
         EXECUTE PROCEDURE update_updated_at_column();
         """
@@ -234,10 +273,14 @@ def upgrade() -> None:
     create_city_table()
     create_accident_table()
     create_accident_statement_table()
+    create_accident_statement_image_table()
+    create_accident_statement_sketch_table()
     create_temporary_driver_table()
 	
 def downgrade() -> None:
     op.drop_table("temporary_accident_driver_data")
+    op.drop_table("accident_statement_sketch")
+    op.drop_table("accident_statement_image")
     op.drop_table("accident_statement")
     op.drop_table("accident")
     op.drop_table("city")

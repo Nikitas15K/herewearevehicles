@@ -10,6 +10,7 @@ from starlette.status import (
 )
 from app.models.users import UserPublic, UserInDB
 from app.models.accidents import AccidentPublic, AccidentCreate
+from app.models.accident_statement import Accident_statement_Create, Accident_statement_Public, Accident_statement_Update
 from app.models.temporary_accident_driver_data import Temporary_Data_Create, Temporary_Data_InDB, Temporary_Data_Public
 from app.db.repositories.vehicles import VehiclesRepository
 from app.db.repositories.accident import AccidentRepository
@@ -66,13 +67,16 @@ async def get_accident_by_id(id: int,
         #     raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="No access to this accident")
         return accident
 
-@router.post("/{id}/temporary", response_model=Temporary_Data_Public, name="accident:add-drivers-accident-id")
+@router.post("/{id}/temporary",
+ response_model=Temporary_Data_Public, 
+ name="accident:add-drivers-accident-id")
 async def add_other_drivers_by_accident_id(id : int,
     current_user: UserPublic = Depends(get_current_active_user),
     accident_repo: AccidentRepository = Depends(get_repository(AccidentRepository)),
     accidentstmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
     new_temporary: Temporary_Data_Create = Body(..., embed=True),
     temporary_repo: TemporaryRepository = Depends(get_repository(TemporaryRepository)))-> Temporary_Data_Public:
+    
 
     accident = await accident_repo.get_accident_from_user_statement_id(id=id, user_id = current_user.id, populate = True)
     if not accident:
@@ -81,10 +85,11 @@ async def add_other_drivers_by_accident_id(id : int,
     for i in range(len(accident.accident_statement)):
         stmt_list.append(accident.accident_statement[i].id)
     accident_statement = await accidentstmt_repo.get_accident_statement_by_accident_id_user_id(accident_id=id, user_id = current_user.id, populate = False)
-    if accident_statement.accident_id != min(stmt_list):
+    if accident_statement.id != min(stmt_list):
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="You can not add drivers")
     temporary_driver_data = await temporary_repo.add_driver_to_accident(new_temporary= new_temporary, accident_id = accident.id)
     return temporary_driver_data
+
 
 @router.get("/", response_model=List[AccidentPublic], name="accident:get-accidents-by-user-id")
 async def get_accidents_by_id(
@@ -123,3 +128,52 @@ async def get_accidents_by_id(
 #         return accident_statements, temporary_accident_driver_data 
 #     else:
 #         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No access")
+
+@router.post("/{accident_id}/accident_stmt")
+async def create_new_accident_statement(
+    accident_id: int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
+    temporary_repo: TemporaryRepository = Depends(get_repository(TemporaryRepository)),
+    new_accident_stmt: Accident_statement_Create = Body(..., embed=True),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> Accident_statement_Public:
+    
+
+    accident_permission = await temporary_repo.get_temporary_driver_data_for_accident_id(accident_id=accident_id, email=current_user.email)    
+    print(accident_permission)
+    vehicle = await vehicles_repo.get_vehicle_by_user_id_digit(sign = accident_permission['vehicle_sign'], user_id = current_user.id)
+
+
+
+    new_accident_stmt.vehicle_id = vehicle.id 
+    new_accident_stmt.insurance_id = vehicle.insurance.id
+    print(new_accident_stmt)
+
+   
+    if accident_permission and accident_permission['answered']:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No permission to declare accident statement here")       
+
+
+    accident_stmt = await accident_stmt_repo.create_new_accident_statement(new_accident_statement= new_accident_stmt)
+    updated_answer =await temporary_repo.update_answered(accident_id=accident_id, email=current_user.email)
+     
+    return accident_stmt
+
+@router.put("/{accident_id}/accident_stmt")
+async def update_accident_statement(
+    accident_id: int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
+    temporary_repo: TemporaryRepository = Depends(get_repository(TemporaryRepository)),
+    accident_statement_update: Accident_statement_Update = Body(..., embed=True),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> Accident_statement_Public:
+    
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please can not update this stmt")
+
+    updated_stmt = await accident_stmt_repo.update_accident_statement(accident_id= accident_id, user_id = current_user.id, accident_statement_update = accident_statement_update)
+    return updated_stmt

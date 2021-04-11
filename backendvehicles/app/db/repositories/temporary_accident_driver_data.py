@@ -2,7 +2,7 @@ from typing import List
 from fastapi import HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 from app.db.repositories.base import BaseRepository
-from app.models.temporary_accident_driver_data import Temporary_Data_Create, Temporary_Data_InDB, Temporary_Data_Public
+from app.models.temporary_accident_driver_data import Temporary_Data_Create, Temporary_Data_InDB, Temporary_Data_Public, Temporary_Data_Update
 from databases import Database
 from pydantic import EmailStr
 
@@ -30,6 +30,13 @@ GET_TEMPORARY_DRIVER_DATA_BY_EMAIL_ACCIDENT_ID_QUERY = """
     WHERE accident_id = :accident_id AND driver_email = :email;
 """
 
+UPDATE_ANSWERED_QUERY="""
+    UPDATE temporary_accident_driver_data
+    SET answered = 'true'
+    WHERE accident_id = :accident_id AND driver_email = :email
+    RETURNING id, accident_id, driver_full_name, driver_email, vehicle_sign, insurance_number, insurance_email, answered, created_at, updated_at;
+    """
+
 
 
 class TemporaryRepository(BaseRepository):
@@ -52,3 +59,13 @@ class TemporaryRepository(BaseRepository):
             return None
         return temporary_accident_driver_data
 
+    async def update_answered(self, *, accident_id: int, email : EmailStr)->Temporary_Data_InDB:
+        temporary_accident_driver_data = await self.get_temporary_driver_data_for_accident_id(accident_id= accident_id, email= email)
+
+        if not temporary_accident_driver_data:
+            return None          
+        updated_temporary = await self.db.fetch_one(query=UPDATE_ANSWERED_QUERY, values={"accident_id": accident_id, "email" : email })
+        return Temporary_Data_InDB(**updated_temporary)
+        # except Exception as e:
+        #     print(e)
+        #     raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")

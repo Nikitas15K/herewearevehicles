@@ -12,25 +12,25 @@ from databases import Database
 from pydantic import EmailStr
 
 CREATE_ACCIDENT_FOR_VEHICLE_QUERY = """
-    INSERT INTO accident (date, city_id, address, injuries, road_problems, closed_case)
-    VALUES (:date, :city_id, UPPER(:address), :injuries, :road_problems, :closed_case)
-    RETURNING id, date, city_id, address, injuries, road_problems, closed_case, created_at, updated_at;
+    INSERT INTO accident (date, city, address, injuries, road_problems, closed_case)
+    VALUES (:date, UPPER(:city), UPPER(:address), :injuries, :road_problems, :closed_case)
+    RETURNING id, date, city, address, injuries, road_problems, closed_case, created_at, updated_at;
 
 """
 
 GET_ALL_ACCIDENTS_QUERY = """
-    SELECT id, date, city_id, address, injuries, road_problems, closed_case, created_at, updated_at
+    SELECT id, date, city, address, injuries, road_problems, closed_case, created_at, updated_at
     FROM accident;
 """
 
 GET_ACCIDENT_BY_ID_QUERY = """
-    SELECT id, date, city_id, address, injuries, road_problems, closed_case, created_at, updated_at
+    SELECT id, date, city, address, injuries, road_problems, closed_case, created_at, updated_at
     FROM accident
     WHERE ID = :id ;
 """
 
 GET_ACCIDENTS_BY_TEMPORARY_DRIVER_EMAIL_QUERY = """
-    SELECT a.id AS id, a.date, a.city_id, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+    SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
         INNER JOIN temporary_accident_driver_data AS tadd
         ON a.id = tadd.accident_id
@@ -38,7 +38,7 @@ GET_ACCIDENTS_BY_TEMPORARY_DRIVER_EMAIL_QUERY = """
 """
 
 GET_ACCIDENT_BY_TEMPORARY_DRIVER_EMAIL_ACCIDENT_ID_QUERY = """
-    SELECT a.id AS id, a.date, a.city_id, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+    SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
         INNER JOIN temporary_accident_driver_data AS tadd
         ON a.id = tadd.accident_id
@@ -46,7 +46,7 @@ GET_ACCIDENT_BY_TEMPORARY_DRIVER_EMAIL_ACCIDENT_ID_QUERY = """
 """
 
 GET_ACCIDENT_BY_USER_ID_WITH_STATEMENT_QUERY = """
-    SELECT a.id, a.date, a.city_id, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+    SELECT a.id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
         INNER JOIN accident_statement AS acst
         ON a.id = acst.accident_id
@@ -54,7 +54,7 @@ GET_ACCIDENT_BY_USER_ID_WITH_STATEMENT_QUERY = """
 """
 
 GET_ACCIDENTS_BY_USER_STMT_ID_QUERY = """
-    SELECT a.id AS id, a.date, a.city_id, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+    SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
         INNER JOIN accident_statement AS acst
         ON a.id = acst.accident_id

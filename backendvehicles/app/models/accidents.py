@@ -10,7 +10,7 @@ from typing import Optional, List
 
 class AccidentModel(BaseModel):
     date: Optional[datetime]
-    city_id: Optional[int]
+    city: Optional[str]
     address: Optional[str]
     injuries: Optional[str]
     road_problems: Optional[str]
@@ -19,13 +19,13 @@ class AccidentModel(BaseModel):
 
 class AccidentInDB(AccidentModel, IDModelMixin, DateTimeModelMixin):
     date: datetime
-    city_id: int
+    city: str
     address: str
     closed_case: bool
 
 class AccidentCreate(AccidentModel):
     date: datetime
-    city_id: int
+    city: str
     address: str
 
 

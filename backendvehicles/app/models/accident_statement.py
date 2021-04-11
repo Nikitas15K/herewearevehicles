@@ -4,6 +4,8 @@ from pydantic import BaseModel, validator
 from app.models.core import DateTimeModelMixin,IDModelMixin
 from app.models.vehicles import VehiclesPublic
 from app.models.users import ProfilePublic
+from app.models.insurance import InsurancePublic
+from app.models.accident_statement_sketch import Only_Sketch
 
 class BytesBaseModel(BaseModel):
     @validator('*')
@@ -26,7 +28,7 @@ class CausedByType(str, Enum):
     HitWhenVehicleWhileChangingSameDirectionDifferentLane = "accident while was driving in the different lane"
     HitWhenVehicleWhenChangedLane = "changed lane"
     HitWhenVehicleWhenOvertook = "overtook"
-    HitWhenVehicleWhenTurntLeft = "turntleft"
+    HitWhenVehicleWhenTurntLeft = "turnt left"
     HitWhenVehicleWhenTurntRight = "turnt right"
     HitWhenVehicleWhenWentBackwards = "went backwards"
     HitWhenVehicleWhenWentWrongdirection = "went wrong direction"
@@ -37,7 +39,7 @@ class CausedByType(str, Enum):
 class Accident_statement_Base(BaseModel):
     caused_by: Optional[CausedByType]
     comments: Optional[str]
-    diagram_sketch: Optional[bytes] 
+    diagram_sketch: Optional[str] 
     image: Optional[bytes] 
 
 
@@ -46,6 +48,7 @@ class Accident_statement_Create(Accident_statement_Base):
     user_id: int
     vehicle_id: int
     accident_id: int
+    insurance_id: int
 
 class Accident_statement_Update(Accident_statement_Base):
     pass
@@ -55,10 +58,13 @@ class Accident_statement_InDB(IDModelMixin, DateTimeModelMixin, Accident_stateme
     user_id: int
     vehicle_id: int
     accident_id: int
+    insurance_id: int
     
 class Accident_statement_Public(Accident_statement_InDB):
     vehicle: Optional[VehiclesPublic]
     user: Optional[ProfilePublic]
+    insurance: Optional[InsurancePublic]
+    sketch: Optional[Only_Sketch]
 
 class AccidentImage(BaseModel):
     image: bytes

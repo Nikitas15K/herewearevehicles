@@ -32,20 +32,20 @@ GET_VEHICLE_BY_ID_QUERY = """
 
 GET_VEHICLES_BY_USER_ID_QUERY_WITH_NEWEST = """
 SELECT v1.id, v1.sign, v1.type, v1.model, v1.manufacture_year, v1.created_at, v1.updated_at,
-        v1.insurance_id, v1.number, v1.expire_date, v1.damage_coverance, v1.insurance_company_id,
+        v1.insurance_id, v1.number, v1.start_date, v1.expire_date, v1.damage_coverance, v1.insurance_company_id,
         v1.insurance_create_at, v1.insurance_updated_at, r.role, r.user_id
     FROM roles r
     inner JOIN 
         (SELECT v.id AS id, v.sign AS sign, v.type AS type, v.model AS model,
 		 v.manufacture_year AS manufacture_year,v.created_at AS created_at, v.updated_at AS updated_at,
-        i.id AS insurance_id, i.number AS number, i.expire_date AS expire_date, i.damage_coverance AS damage_coverance,
+        i.id AS insurance_id, i.number AS number, i.start_date AS start_date, i.expire_date AS expire_date, i.damage_coverance AS damage_coverance,
 		i.insurance_company_id AS insurance_company_id, i.created_at AS insurance_create_at,
 		i.updated_at AS insurance_updated_at
         FROM vehicles v
         INNER JOIN
-            (SELECT id, number, i2.expire_date AS expire_date, i1.vehicle_id,  damage_coverance, insurance_company_id, created_at, updated_at
+            (SELECT id, number, i1.start_date AS start_date, i2.expire_date AS expire_date, i1.vehicle_id,  damage_coverance, insurance_company_id, created_at, updated_at
             FROM 
-            (SELECT id, number, expire_date, vehicle_id, damage_coverance, insurance_company_id, created_at, updated_at
+            (SELECT id, number, start_date, expire_date, vehicle_id, damage_coverance, insurance_company_id, created_at, updated_at
             FROM insurance ORDER BY id) AS i1
            inner join (SELECT vehicle_id,MAX(expire_date) AS expire_date FROM insurance group by vehicle_id) AS i2
 			ON i1.expire_date = i2.expire_date AND i1.vehicle_id = i2.vehicle_id)
@@ -66,7 +66,7 @@ GET_ALL_VEHICLES_QUERY = """
 # GET_VEHICLE_BY_SIGN_QUERY is used to check if the vehicle is already added, check create vehicle
 GET_VEHICLE_BY_SIGN_QUERY = """
     SELECT v.id, v.sign, v.type, v.model, v.manufacture_year, v.created_at, v.updated_at,
-        i.id AS insurance_id, i.number, i.expire_date, i.insurance_company_id, i.damage_coverance,
+        i.id AS insurance_id, i.number, i.start_date, i.expire_date, i.insurance_company_id, i.damage_coverance,
         i.created_at AS insurance_create_at, i.updated_at AS insurance_updated_at
     FROM vehicles v
         INNER JOIN insurance i
@@ -87,13 +87,13 @@ GET_VEHICLE_BY_SIGN_QUERY = """
 
 # GET_ALL_VEHICLES_QUERY_WITH_NEWEST_INSURANCE = """
 # SELECT v.id, v.sign, v.type, v.model, v.manufacture_year, v.created_at, v.updated_at,
-#         i.id AS insurance_id, i.number, i.expire_date, i.damage_coverance, i.insurance_company_id, 
+#         i.id AS insurance_id, i.number, i.start_date, i.expire_date, i.damage_coverance, i.insurance_company_id, 
 #         i.created_at AS insurance_create_at, i.updated_at AS insurance_updated_at
 #     FROM vehicles v
 # INNER JOIN
-# 	(SELECT id, number, i2.expire_date AS expire_date, i1.vehicle_id, i1.damage_coverance, insurance_company_id, created_at, updated_at
+# 	(SELECT id, number, i1.start_date AS start_date,i2.expire_date AS expire_date, i1.vehicle_id, i1.damage_coverance, insurance_company_id, created_at, updated_at
 # 		FROM 
-# 	 		(SELECT id, number, expire_date, vehicle_id, damage_coverance, insurance_company_id, created_at, updated_at
+# 	 		(SELECT id, number, start_date, expire_date, vehicle_id, damage_coverance, insurance_company_id, created_at, updated_at
 # 				FROM insurance ORDER BY id) AS i1
 # INNER JOIN 
 # 	 (SELECT vehicle_id,MAX(expire_date) AS expire_date FROM insurance group by vehicle_id) AS i2
@@ -181,3 +181,15 @@ class VehiclesRepository(BaseRepository):
     #     vehicle_records = await self.db.fetch_all(query=GET_ALL_VEHICLES_QUERY_WITH_NEWEST_INSURANCE)
     #     return vehicle_records
  
+    async def get_vehicle_by_user_id_digit(self, *, sign: str, user_id:int, populate: bool = True):
+        sign_digit =int(''.join(filter(str.isdigit, sign)))
+        print(sign_digit)
+        vehicle_records = await self.db.fetch_all(query=GET_ALL_VEHICLES_QUERY)
+        for vehicle_record in vehicle_records:
+            check = int ( ''.join(filter(str.isdigit, vehicle_record['sign'])))
+            print(check)
+            if check == sign_digit:
+                vehicle = VehiclesInDB(**vehicle_record)
+                if populate:
+                    return await self.populate_vehicle(vehicle = vehicle)
+        return vehicle
