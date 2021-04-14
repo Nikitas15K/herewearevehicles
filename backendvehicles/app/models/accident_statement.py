@@ -39,9 +39,6 @@ class CausedByType(str, Enum):
 class Accident_statement_Base(BaseModel):
     caused_by: Optional[CausedByType]
     comments: Optional[str]
-    diagram_sketch: Optional[str] 
-    image: Optional[bytes] 
-
 
 class Accident_statement_Create(Accident_statement_Base):
 

@@ -8,6 +8,7 @@ from app.db.repositories.insurance import InsuranceRepository
 from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
 from app.db.repositories.accident_sketch import AccidentSketchRepository
 from app.models.accident_statement import Accident_statement_Create, Accident_statement_InDB, Accident_statement_Public, Accident_statement_Update, AccidentImage
+from app.models.accident_statement_sketch import Accident_Sketch_Update, Accident_Sketch_InDB
 from app.api.dependencies.auth import get_other_user_by_user_id
 from databases import Database
 from pydantic import EmailStr
@@ -57,11 +58,18 @@ CREATE_ACCIDENT_STATEMENT_FOR_ACCIDENT_QUERY = """
 
 UPDATE_ACCIDENT_STATEMENT_FOR_ACCIDENT_QUERY = """
     UPDATE accident_statement
-        SET caused_by =  :caused_by, 
+        SET caused_by = :caused_by, 
             comments = :comments
-    WHERE accident_id = : accident_id AND user_id= :user_id
+    WHERE accident_id = :accident_id AND user_id= :user_id
     RETURNING id, user_id, accident_id, vehicle_id, insurance_id, caused_by, comments, created_at, updated_at;
 """
+
+UPDATE_SKETCH_QUERY="""
+    UPDATE accident_statement_sketch
+    SET sketch = :sketch
+    WHERE statement_id = :statement_id 
+    RETURNING id, statement_id, sketch, created_at, updated_at;
+    """
 
 class AccidentStatementRepository(BaseRepository):
     def __init__(self, db: Database) -> None:
@@ -117,27 +125,46 @@ class AccidentStatementRepository(BaseRepository):
     #     return AccidentImage(**image)
         
 
-
-
-
 ######################################ftiakse to montelo sto migrate
 
 
-    async def update_accident_statement(self, *, accident_id: int, user_id:int, accident_statement_update: Accident_statement_Update) -> Accident_statement_InDB:
+    async def update_accident_statement(self, *, accident_id: int, user_id:int, accident_statement_update: Accident_statement_Update):
         accident_statement = await self.get_accident_statement_by_accident_id_user_id(accident_id=accident_id, user_id= user_id, populate = False)
-        
+
         if not accident_statement:
             return None
       
         stmt_update_params = accident_statement.copy(update=accident_statement_update.dict(exclude_unset=True))
-
+        print(stmt_update_params)
         try:
             updated_stmt = await self.db.fetch_one(
                 query=UPDATE_ACCIDENT_STATEMENT_FOR_ACCIDENT_QUERY, 
-                values= stmt_update_params.dict(exclude={"id","created_at", "updated_at"}),
+                values= stmt_update_params.dict(exclude={"id","created_at", "updated_at", "vehicle_id", "insurance_id"}),
                 )
-            return Accident_statement_InDB(**updated_stmt)
+            print(updated_stmt)
+            return updated_stmt
         except Exception as e:
             print(e)
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
 
+
+    async def update_accident_sketch(self, *,accident_id: int, user_id:int, updated_sketch: Accident_Sketch_Update) -> Accident_Sketch_InDB:
+        accident_statement = await self.get_accident_statement_by_accident_id_user_id(accident_id=accident_id, user_id= user_id, populate = False)
+
+        if not accident_statement:
+            return None
+        
+        sketch = await self.sketch_repo.get_accident_sketch_by_statement_id(statement_id=accident_statement.id)
+        sketch = Accident_Sketch_InDB(**sketch)
+        if not sketch:
+            return None          
+        sketch_update_params = sketch.copy(update=updated_sketch.get_dict())
+        try:
+            updated_sketch = await self.db.fetch_one(
+                query=UPDATE_SKETCH_QUERY, 
+                values= sketch_update_params.dict(exclude={"id","created_at", "updated_at"}),
+                )
+            return Accident_Sketch_InDB(**updated_sketch)
+        except Exception as e:
+            print(e)
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")

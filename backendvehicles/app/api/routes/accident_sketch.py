@@ -44,10 +44,5 @@ async def update_sketch_by_statement_id(statement_id : int,
     updated_sketch: Accident_Sketch_Update = Body(..., embed=True),
     sketch_repo: AccidentSketchRepository = Depends(get_repository(AccidentSketchRepository)),
     ) -> Accident_Sketch_Public:
-    # vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
-
-    # if not vehicle:
-    #     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
-
     updated_sketch = await sketch_repo.update_accident_sketch_by_statement_id(statement_id=statement_id, updated_sketch=updated_sketch)
     return updated_sketch

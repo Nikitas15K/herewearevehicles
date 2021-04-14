@@ -24,10 +24,10 @@ class Accident_Sketch_Base(BaseModel):
 
 class Accident_Sketch_Create(Accident_Sketch_Base):
     statement_id:int
-    sketch: Optional[List[Coordinates]] 
+    sketch: Optional[str] 
     def get_dict(self):
         if self.sketch:
-            return {'sketch':  ",".join([str(item.dict()) for item in self.sketch]),
+            return {'sketch':  self.sketch[1:-1].replace('"', "'"),
                 'statement_id': self.statement_id}
         else:
             return {
@@ -46,7 +46,7 @@ class Accident_Sketch_Update(Accident_Sketch_Base):
 
 class Accident_Sketch_InDB(IDModelMixin, DateTimeModelMixin, Accident_Sketch_Base):
     statement_id:int
-    sketch:str
+    sketch:Optional[str]
     
 class Accident_Sketch_Public(Accident_Sketch_InDB):
     pass

@@ -12,9 +12,11 @@ from app.models.users import UserPublic, UserInDB
 from app.models.accidents import AccidentPublic, AccidentCreate
 from app.models.accident_statement import Accident_statement_Create, Accident_statement_Public, Accident_statement_Update
 from app.models.temporary_accident_driver_data import Temporary_Data_Create, Temporary_Data_InDB, Temporary_Data_Public
+from app.models.accident_statement_sketch import Accident_Sketch_InDB, Accident_Sketch_Public, Accident_Sketch_Update, Accident_Sketch_Create
 from app.db.repositories.vehicles import VehiclesRepository
 from app.db.repositories.accident import AccidentRepository
 from app.db.repositories.accident_statement import AccidentStatementRepository
+from app.db.repositories.accident_sketch import AccidentSketchRepository
 from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
 from app.api.dependencies.database import get_repository
 from app.api.dependencies.auth import get_current_active_user
@@ -129,7 +131,7 @@ async def get_accidents_by_id(
 #     else:
 #         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No access")
 
-@router.post("/{accident_id}/accident_stmt")
+@router.post("/accident_stmt/{accident_id}")
 async def create_new_accident_statement(
     accident_id: int,
     current_user: UserPublic = Depends(get_current_active_user),
@@ -160,12 +162,10 @@ async def create_new_accident_statement(
      
     return accident_stmt
 
-@router.put("/{accident_id}/accident_stmt")
+@router.put("/accident_stmt/{accident_id}")
 async def update_accident_statement(
     accident_id: int,
     current_user: UserPublic = Depends(get_current_active_user),
-    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
-    temporary_repo: TemporaryRepository = Depends(get_repository(TemporaryRepository)),
     accident_statement_update: Accident_statement_Update = Body(..., embed=True),
     accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
     ) -> Accident_statement_Public:
@@ -177,3 +177,34 @@ async def update_accident_statement(
 
     updated_stmt = await accident_stmt_repo.update_accident_statement(accident_id= accident_id, user_id = current_user.id, accident_statement_update = accident_statement_update)
     return updated_stmt
+
+@router.put("/accident_sketch/update/{accident_id}/", response_model=Accident_Sketch_Public, name="accident:update-sketch-by-id")
+async def update_sketch_by_statement_id(accident_id : int,
+    updated_sketch: Accident_Sketch_Update = Body(..., embed=True),
+    current_user: UserPublic = Depends(get_current_active_user),
+    sketch_repo: AccidentSketchRepository = Depends(get_repository(AccidentSketchRepository)),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> Accident_Sketch_Public:
+
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please can not update this stmt")
+
+    updated_sketch = await sketch_repo.update_accident_sketch_by_statement_id(statement_id= accident_stmt.id, updated_sketch=updated_sketch)
+    return updated_sketch
+
+@router.post("/accident_sketch/add/{accident_id}",response_model=Accident_Sketch_Public, name="accident:add-sketch", status_code=HTTP_201_CREATED)
+async def create_new_accident_sketch(
+    accident_id: int,
+    new_accident_sketch: Accident_Sketch_Create = Body(..., embed=True),
+    current_user: UserPublic = Depends(get_current_active_user),
+    sketch_repo: AccidentSketchRepository = Depends(get_repository(AccidentSketchRepository)),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> Accident_Sketch_Public:
+  
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please can not update this stmt")
+    new_accident_sketch.statement_id=accident_stmt.id
+    created_sketch = await sketch_repo.create_new_accident_sketch(new_accident_sketch=new_accident_sketch, statement_id= accident_stmt.id)
+    return created_sketch
