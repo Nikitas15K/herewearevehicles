@@ -1,5 +1,4 @@
 from typing import List
-import datetime
 from fastapi import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
 from app.models.accidents import AccidentPublic, AccidentInDB, AccidentCreate
@@ -45,6 +44,14 @@ GET_ACCIDENT_BY_TEMPORARY_DRIVER_EMAIL_ACCIDENT_ID_QUERY = """
     WHERE a.id = :id AND tadd.driver_email = :email ;
 """
 
+GET_ACCIDENT_BY_TEMPORARY_DRIVER_ID_QUERY = """
+    SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+    FROM accident AS a 
+        INNER JOIN temporary_accident_driver_data AS tadd
+        ON a.id = tadd.accident_id
+    WHERE tadd.id = :id;
+"""
+
 GET_ACCIDENT_BY_USER_ID_WITH_STATEMENT_QUERY = """
     SELECT a.id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
@@ -61,6 +68,12 @@ GET_ACCIDENTS_BY_USER_STMT_ID_QUERY = """
     WHERE acst.user_id= :user_id;
 """
 
+UPDATE_CLOSED_CASE_QUERY ="""
+    UPDATE accident
+    SET closed_case = 'true'
+    WHERE id = :id
+    RETURNING id, date, city, address, injuries, road_problems, closed_case, created_at, updated_at;
+    """
 
 
 class AccidentRepository(BaseRepository):
@@ -86,17 +99,17 @@ class AccidentRepository(BaseRepository):
             temporary_accident_drivers=await self.temporary_accident_driver_data_repo.get_all_temporary_driver_data_for_accident_id(accident_id=accident.id),
         )
 
-    async def get_all_accidents(self) ->List:
-        accident_records = await self.db.fetch_all(query=GET_ALL_ACCIDENTS_QUERY)
-        return accident_records 
-
-    async def get_accident_by_id(self, *, id: int):
-        accident_record = await self.db.fetch_one(query=GET_ACCIDENT_BY_ID_WITH_STATEMENT_QUERY, values={"id": id})
+    async def get_accident_by_id(self, *, id: int, populate: bool = True) -> AccidentInDB:
+        accident_record = await self.db.fetch_one(query=GET_ACCIDENT_BY_ID_QUERY, values={"id": id})
         if not accident_record:
             return None
-        return accident_record
+        else:
+            accident = AccidentInDB(**accident_record)
+            if populate:
+                return await self.populate_accident(accident = accident)
+        return accident
 
-    async def get_accident_from_user_statement_id(self, *, id: int, user_id:int, populate: bool = True) -> AccidentPublic:
+    async def get_accident_from_user_with_statement_id(self, *, id: int, user_id:int, populate: bool = True) -> AccidentPublic:
         accident_record = await self.db.fetch_one(query=GET_ACCIDENT_BY_USER_ID_WITH_STATEMENT_QUERY, values={"id": id, "user_id":user_id})
         if not accident_record:
             return None
@@ -106,6 +119,17 @@ class AccidentRepository(BaseRepository):
                 return await self.populate_accident(accident = accident)
         return accident
 
+    async def get_accident_by_temporary_driver_id(self, *, id: int, populate: bool = True) -> AccidentPublic:
+        accident_record = await self.db.fetch_one(query=GET_ACCIDENT_BY_TEMPORARY_DRIVER_ID_QUERY, values={"id": id})
+        if not accident_record:
+            return None
+        else:
+            accident = AccidentInDB(**accident_record)
+            if populate:
+                return await self.populate_accident(accident = accident)
+        return accident
+
+    
     async def get_accident_by_temporary_driver_by_email(self, *, id: int, email:EmailStr, populate: bool = True) -> AccidentPublic:
         accident_record = await self.db.fetch_one(query=GET_ACCIDENT_BY_TEMPORARY_DRIVER_EMAIL_ACCIDENT_ID_QUERY, values={"id": id, "email":email})
         if not accident_record:
@@ -144,7 +168,28 @@ class AccidentRepository(BaseRepository):
                         accidents_list.append(accident_populated)
         return accidents_list
 
+    
+    async def get_all_accidents(self,*, populate: bool = True) ->List[AccidentPublic]:
+        accident_records = await self.db.fetch_all(query=GET_ALL_ACCIDENTS_QUERY)
+        accidents_list = []
+        for accident_record in accident_records:
+            accident = AccidentInDB(**accident_record)
+            if populate:
+                accident_populated = await self.populate_accident(accident = accident)
+                accidents_list.append(accident_populated)
+        return accidents_list 
 
+
+    async def update_closed_case(self, *, id: int, populate: bool = True)->AccidentPublic:
+        accident = await self.get_accident_by_id(id= id)
+        if not accident:
+            return None  
+        else:        
+            updated_accident = await self.db.fetch_one(query=UPDATE_CLOSED_CASE_QUERY, values={ "id": id })
+            accident_closed = AccidentInDB(**updated_accident)
+            if populate:
+                accident_populated = await self.populate_accident(accident = accident_closed)
+            return accident_populated 
 
 
 

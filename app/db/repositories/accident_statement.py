@@ -64,12 +64,12 @@ UPDATE_ACCIDENT_STATEMENT_FOR_ACCIDENT_QUERY = """
     RETURNING id, user_id, accident_id, vehicle_id, insurance_id, caused_by, comments, created_at, updated_at;
 """
 
-UPDATE_SKETCH_QUERY="""
-    UPDATE accident_statement_sketch
-    SET sketch = :sketch
-    WHERE statement_id = :statement_id 
-    RETURNING id, statement_id, sketch, created_at, updated_at;
-    """
+# UPDATE_SKETCH_QUERY="""
+#     UPDATE accident_statement_sketch
+#     SET sketch = :sketch
+#     WHERE statement_id = :statement_id 
+#     RETURNING id, statement_id, sketch, created_at, updated_at;
+#     """
 
 class AccidentStatementRepository(BaseRepository):
     def __init__(self, db: Database) -> None:
@@ -120,14 +120,6 @@ class AccidentStatementRepository(BaseRepository):
         new_accident_statement = await self.db.fetch_one(query=CREATE_ACCIDENT_STATEMENT_FOR_ACCIDENT_QUERY, values=query_values)
         return await self.populate_accident_statement(accident_statement = Accident_statement_InDB(**new_accident_statement))
 
-    # async def get_image(self, *, id: int)->AccidentImage:
-    #     image = await self.db.fetch_one(query=GET_ACCIDENT_IMAGE_BY_ID_QUERY, values={'id':id})
-    #     return AccidentImage(**image)
-        
-
-######################################ftiakse to montelo sto migrate
-
-
     async def update_accident_statement(self, *, accident_id: int, user_id:int, accident_statement_update: Accident_statement_Update):
         accident_statement = await self.get_accident_statement_by_accident_id_user_id(accident_id=accident_id, user_id= user_id, populate = False)
 
@@ -148,23 +140,29 @@ class AccidentStatementRepository(BaseRepository):
             raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
 
 
-    async def update_accident_sketch(self, *,accident_id: int, user_id:int, updated_sketch: Accident_Sketch_Update) -> Accident_Sketch_InDB:
-        accident_statement = await self.get_accident_statement_by_accident_id_user_id(accident_id=accident_id, user_id= user_id, populate = False)
+    # async def update_accident_sketch(self, *,accident_id: int, user_id:int, updated_sketch: Accident_Sketch_Update) -> Accident_Sketch_InDB:
+    #     accident_statement = await self.get_accident_statement_by_accident_id_user_id(accident_id=accident_id, user_id= user_id, populate = False)
 
-        if not accident_statement:
-            return None
+    #     if not accident_statement:
+    #         return None
         
-        sketch = await self.sketch_repo.get_accident_sketch_by_statement_id(statement_id=accident_statement.id)
-        sketch = Accident_Sketch_InDB(**sketch)
-        if not sketch:
-            return None          
-        sketch_update_params = sketch.copy(update=updated_sketch.get_dict())
-        try:
-            updated_sketch = await self.db.fetch_one(
-                query=UPDATE_SKETCH_QUERY, 
-                values= sketch_update_params.dict(exclude={"id","created_at", "updated_at"}),
-                )
-            return Accident_Sketch_InDB(**updated_sketch)
-        except Exception as e:
-            print(e)
-            raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
+    #     sketch = await self.sketch_repo.get_accident_sketch_by_statement_id(statement_id=accident_statement.id)
+    #     sketch = Accident_Sketch_InDB(**sketch)
+    #     if not sketch:
+    #         return None          
+    #     sketch_update_params = sketch.copy(update=updated_sketch.get_dict())
+    #     try:
+    #         updated_sketch = await self.db.fetch_one(
+    #             query=UPDATE_SKETCH_QUERY, 
+    #             values= sketch_update_params.dict(exclude={"id","created_at", "updated_at"}),
+    #             )
+    #         return Accident_Sketch_InDB(**updated_sketch)
+    #     except Exception as e:
+    #         print(e)
+    #         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
+
+
+    # async def get_image(self, *, id: int)->AccidentImage:
+    #     image = await self.db.fetch_one(query=GET_ACCIDENT_IMAGE_BY_ID_QUERY, values={'id':id})
+    #     return AccidentImage(**image)
+        

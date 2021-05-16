@@ -7,7 +7,6 @@ from starlette.status import HTTP_201_CREATED, HTTP_404_NOT_FOUND
 
 router = APIRouter()
 
-
 @router.get("/", name="insurance-companies:get-all-insurance-companies")
 async def get_all_insurance_companies(
         insurance_company_repo: InsuranceCompanyRepository = Depends(get_repository(InsuranceCompanyRepository))

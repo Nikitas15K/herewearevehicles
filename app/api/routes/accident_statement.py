@@ -1,30 +1,30 @@
-from fastapi import Form, File, UploadFile, APIRouter, Body, Depends, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
-from app.img import IMG_DIR
-import os
-import io
-# from typing import List
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
-    HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
-)
-from app.models.users import UserPublic, UserInDB, ProfilePublic
-from app.models.accidents import AccidentPublic, AccidentCreate
-from app.models.accident_statement import Accident_statement_Public, Accident_statement_Create
-from app.models.temporary_accident_driver_data import Temporary_Data_Update
-from app.db.repositories.vehicles import VehiclesRepository
-from app.db.repositories.accident import AccidentRepository
-from app.db.repositories.accident_statement import AccidentStatementRepository
-from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
-from app.api.dependencies.database import get_repository
-from app.api.dependencies.auth import get_current_active_user
-from app.models.accident_statement import CausedByType
+# from fastapi import Form, File, UploadFile, APIRouter, Body, Depends, HTTPException
+# from fastapi.responses import FileResponse, StreamingResponse
+# from app.img import IMG_DIR
+# import os
+# import io
 
-router = APIRouter()
+# from starlette.status import (
+#     HTTP_200_OK,
+#     HTTP_201_CREATED,
+#     HTTP_400_BAD_REQUEST,
+#     HTTP_401_UNAUTHORIZED,
+#     HTTP_404_NOT_FOUND,
+#     HTTP_422_UNPROCESSABLE_ENTITY,
+# )
+# from app.models.users import UserPublic, UserInDB, ProfilePublic
+# from app.models.accidents import AccidentPublic, AccidentCreate
+# from app.models.accident_statement import Accident_statement_Public, Accident_statement_Create
+# from app.models.temporary_accident_driver_data import Temporary_Data_Update
+# from app.db.repositories.vehicles import VehiclesRepository
+# from app.db.repositories.accident import AccidentRepository
+# from app.db.repositories.accident_statement import AccidentStatementRepository
+# from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
+# from app.api.dependencies.database import get_repository
+# from app.api.dependencies.auth import get_current_active_user
+# from app.models.accident_statement import CausedByType
+
+# router = APIRouter()
 
 # @router.get("/", name="accident:user")
 # async def getuser(
@@ -53,27 +53,30 @@ router = APIRouter()
 #     accident_stmt = await accident_repo.create_accident_for_vehicle(new_accident= new_accident, vehicle_id = vehicle_id, id = current_user.id)
 #     return accident_stmt
 
-@router.post("/")
-async def create_new_accident_statement(vehicle_id : int,
-    current_user: UserPublic = Depends(get_current_active_user),
-    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
-    temporary_repo: TemporaryRepository = Depends(get_repository(TemporaryRepository)),
-    new_accident_stmt: Accident_statement_Create = Body(..., embed=True),
-    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
-    ) -> Accident_statement_Public:
-    vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
-    if not vehicle:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
 
-    accident_permission = await temporary_repo.get_temporary_driver_data_for_accident_id(accident_id=accident_id, email=current_user.email)
-    if accident_permission and accident_permission['answered']:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No permission to declare accident statement here")       
+#####################################################
+
+# @router.post("/")
+# async def create_new_accident_statement(vehicle_id : int,
+#     current_user: UserPublic = Depends(get_current_active_user),
+#     vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
+#     temporary_repo: TemporaryRepository = Depends(get_repository(TemporaryRepository)),
+#     new_accident_stmt: Accident_statement_Create = Body(..., embed=True),
+#     accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+#     ) -> Accident_statement_Public:
+#     vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
+#     if not vehicle:
+#         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
+
+#     accident_permission = await temporary_repo.get_temporary_driver_data_by_driver_email(accident_id=accident_id, email=current_user.email)
+#     if accident_permission and accident_permission['answered']:
+#         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No permission to declare accident statement here")       
     
 
-    accident_stmt = await accident_stmt_repo.create_new_accident_statement(new_accident= new_accident, vehicle_id = vehicle_id, id = current_user.id,
-     )
-    updated_answer =await temporary_repo.update_answered(accident_id=accident_id, email=current_user.email)
-    return accident_stmt
+#     accident_stmt = await accident_stmt_repo.create_new_accident_statement(new_accident= new_accident, vehicle_id = vehicle_id, id = current_user.id,
+#      )
+#     updated_answer =await temporary_repo.update_answered(accident_id=accident_id, email=current_user.email)
+#     return accident_stmt
 
 # @router.post("/new")
 # async def create_new_accident_statement(user_id: int = Form(...),
@@ -94,7 +97,7 @@ async def create_new_accident_statement(vehicle_id : int,
 #     if not vehicle:
 #         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
 
-#     accident_permission = await temporary_repo.get_temporary_driver_data_for_accident_id(accident_id=accident_id, email=current_user.email)
+#     accident_permission = await temporary_repo.get_temporary_driver_data_by_driver_email(accident_id=accident_id, email=current_user.email)
 #     if accident_permission and accident_permission['answered']:
 #         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No permission to declare accident statement here")       
     

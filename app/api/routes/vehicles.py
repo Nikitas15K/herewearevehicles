@@ -64,7 +64,10 @@ async def get_all_vehicles_by_user_id(
     current_user: UserPublic = Depends(get_current_active_user),
     vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
 ) -> List:
-    return await vehicles_repo.get_all_vehicles_by_user_id(id = current_user.id)
+    if current_user.is_superuser:
+        return await vehicles_repo.get_all_vehicles()
+    else:
+        return await vehicles_repo.get_all_vehicles_by_user_id(id = current_user.id)
     
 
 @router.put("/{vehicle_id}/insurance", response_model=InsurancePublic, name="insurance:update-insurance-by-vehicle-id")
