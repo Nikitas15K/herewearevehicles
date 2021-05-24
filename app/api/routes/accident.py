@@ -1,6 +1,6 @@
 from typing import List
 import datetime
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Form, File, UploadFile
 from starlette.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
@@ -16,11 +16,15 @@ from app.models.temporary_accident_driver_data import Temporary_Data_Create, Tem
 from app.models.accident_statement_sketch import Accident_Sketch_InDB, Accident_Sketch_Public, Accident_Sketch_Update, Accident_Sketch_Create
 from app.db.repositories.vehicles import VehiclesRepository
 from app.db.repositories.accident import AccidentRepository
+from app.models.accident_image import Accident_Image_Public, Accident_Image_Create
 from app.db.repositories.accident_statement import AccidentStatementRepository
 from app.db.repositories.accident_sketch import AccidentSketchRepository
+from app.db.repositories.accident_image import AccidentImageRepository
 from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
 from app.api.dependencies.database import get_repository
 from app.api.dependencies.auth import get_current_active_user
+from fastapi.responses import FileResponse, StreamingResponse
+import io
 
 router = APIRouter()
 
@@ -37,16 +41,6 @@ async def create_new_accident(vehicle_id : int,
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
     accident = await accident_repo.create_accident_for_vehicle(new_accident= new_accident, vehicle_id = vehicle_id, id = current_user.id)
     return accident
-
-# @router.get("/all", response_model= List[AccidentPublic], name="accident:get-all-accidents")
-# async def get_all_accidents(
-#     current_user: UserPublic = Depends(get_current_active_user),
-#     accident_repo: AccidentRepository = Depends(get_repository(AccidentRepository))
-#     ) -> List[AccidentPublic]:
-#     if current_user.is_superuser:
-#         return await accident_repo.get_all_accidents()
-#     else:
-#         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="No access")
 
 @router.get("/{id}/", response_model=AccidentPublic, name="accident:get-accident-by-id")
 async def get_accident_by_id(id: int,
@@ -200,7 +194,7 @@ async def create_new_accident_sketch(
   
     accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
     if not accident_stmt:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please can not update this sketch")
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="You can not update this sketch")
     new_accident_sketch.statement_id=accident_stmt.id
     created_sketch = await sketch_repo.create_new_accident_sketch(new_accident_sketch=new_accident_sketch, statement_id= accident_stmt.id)
     return created_sketch
@@ -229,6 +223,54 @@ async def remove_accident_driver(
     temporary_driver_data = await temporary_repo.delete_temporary_by_id(id = id)
     accident_upd = await accident_repo.get_accident_from_user_with_statement_id(id = accident.id, user_id = current_user.id, populate = True)
     return accident_upd
+
+@router.post("/newImage")
+async def create_new_accident_image(
+ accident_id:  int = Form(...),
+ image: UploadFile = File(...),
+ current_user: UserPublic = Depends(get_current_active_user),
+ accident_image_repo: AccidentImageRepository = Depends(get_repository(AccidentImageRepository)),
+ accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> Accident_Image_Public:
+
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="You can not add image")
+    contentsImage = await image.read()
+    new_accident_image = Accident_Image_Create(statement_id=accident_stmt.id, image = contentsImage)
+    accident_image = await accident_image_repo.add_new_accident_image(new_accident_image = new_accident_image)
+    return accident_image
+
+@router.get("/image/{accident_id}")
+async def get_image_from_accident_stmt(
+    accident_id:int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    accident_image_repo: AccidentImageRepository = Depends(get_repository(AccidentImageRepository)),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> bytes:
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="You have not access to this accident")
+    image = await accident_image_repo.get_image(statement_id = accident_stmt.id)
+    # print(image.image)
+    # file_like = open(os.path.join(IMG_DIR, 'nikitas.jpg'), mode="rb")
+    return StreamingResponse(io.BytesIO(image.image), media_type="image/jpeg")
+
+@router.get("/imageList/{accident_id}")
+async def get_image_count_from_accident_stmt(
+    accident_id:int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    accident_image_repo: AccidentImageRepository = Depends(get_repository(AccidentImageRepository)),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    )->List[int]:
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="You have not access to this accident")
+    ids = await accident_image_repo.get_image_count(statement_id = accident_stmt.id)
+    return ids
+
+
+
 
 # @router.get("/stmt/{accident_id}/", response_model= List, name="accident_statement:get-accident-statements-by-accident-id")
 # async def get_accident_stmt_by_id(accident_id: int,
@@ -296,3 +338,13 @@ async def remove_accident_driver(
 #      email = current_user.email, 
 #      temporary_accident_driver_data_update = temporary_accident_driver_data_update)
 #     return temporary_driver_data
+
+# @router.get("/all", response_model= List[AccidentPublic], name="accident:get-all-accidents")
+# async def get_all_accidents(
+#     current_user: UserPublic = Depends(get_current_active_user),
+#     accident_repo: AccidentRepository = Depends(get_repository(AccidentRepository))
+#     ) -> List[AccidentPublic]:
+#     if current_user.is_superuser:
+#         return await accident_repo.get_all_accidents()
+#     else:
+#         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="No access")

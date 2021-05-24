@@ -256,7 +256,7 @@ def create_temporary_driver_table() -> None:
         """
         CREATE TRIGGER update_temporary_accident_modtime
             BEFORE UPDATE
-            ON accident
+            ON temporary_accident_driver_data
             FOR EACH ROW
         EXECUTE PROCEDURE update_updated_at_column();
         """

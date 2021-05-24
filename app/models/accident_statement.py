@@ -62,6 +62,7 @@ class Accident_statement_Public(Accident_statement_InDB):
     user: Optional[ProfilePublic]
     insurance: Optional[InsurancePublic]
     sketch: Optional[Only_Sketch]
+    image_count: int
 
 class AccidentImage(BaseModel):
     image: bytes

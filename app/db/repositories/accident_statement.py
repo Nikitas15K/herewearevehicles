@@ -3,8 +3,9 @@ import datetime
 from fastapi import HTTPException, Depends
 from starlette.status import HTTP_400_BAD_REQUEST
 from app.db.repositories.base import BaseRepository
-from app.db.repositories.vehicles import VehiclesRepository
+from app.db.repositories.accident_image import AccidentImageRepository
 from app.db.repositories.insurance import InsuranceRepository
+from app.db.repositories.vehicles import VehiclesRepository
 from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
 from app.db.repositories.accident_sketch import AccidentSketchRepository
 from app.models.accident_statement import Accident_statement_Create, Accident_statement_InDB, Accident_statement_Public, Accident_statement_Update, AccidentImage
@@ -43,13 +44,6 @@ GET_ACCIDENT_STATEMENTS_BY_ACCIDENT_ID_QUERY = """
     WHERE accident_id = :accident_id;
 """
 
-GET_ACCIDENT_IMAGE_BY_ID_QUERY = """
-    SELECT image
-    FROM accident_statement
-    WHERE id = :id;
-"""
-
-
 CREATE_ACCIDENT_STATEMENT_FOR_ACCIDENT_QUERY = """
     INSERT INTO accident_statement(user_id, accident_id, vehicle_id, insurance_id, caused_by, comments)
     VALUES (:user_id, :accident_id, :vehicle_id, :insurance_id, :caused_by, :comments)
@@ -78,6 +72,7 @@ class AccidentStatementRepository(BaseRepository):
         self.insurance_repo = InsuranceRepository(db)
         self.temporary_repo = TemporaryRepository(db)
         self.sketch_repo = AccidentSketchRepository(db)
+        self.image_repo = AccidentImageRepository(db)
 
     async def create_accident_statement(self, *, vehicle_id: int, user_id:int, accident_id:int) -> Accident_statement_InDB:
         vehicle=await self.vehicles_repo.get_vehicle_by_id(id=vehicle_id, user_id= user_id)
@@ -97,12 +92,14 @@ class AccidentStatementRepository(BaseRepository):
     async def populate_accident_statement(self, *,
      accident_statement: Accident_statement_InDB
      ) -> Accident_statement_InDB:
+        image_list = await (self.image_repo.get_image_count(statement_id=accident_statement.id)) 
         return Accident_statement_Public(
             **accident_statement.dict(),
             vehicle=await self.vehicles_repo.get_vehicle_by_id(id=accident_statement.vehicle_id, user_id= accident_statement.user_id),
             user=get_other_user_by_user_id(user_id = accident_statement.user_id),
             insurance= await self.insurance_repo.get_insurance_by_id(id=accident_statement.insurance_id),
-            sketch = await self.sketch_repo.get_accident_sketch_by_statement_id(statement_id=accident_statement.id)        
+            sketch = await self.sketch_repo.get_accident_sketch_by_statement_id(statement_id=accident_statement.id),
+            image_count= len(image_list)
         )
     
     async def get_all_accident_statements_for_accident_id(self, *, accident_id: int, populate: bool = True)-> List[Accident_statement_InDB]:
@@ -162,7 +159,5 @@ class AccidentStatementRepository(BaseRepository):
     #         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
 
 
-    # async def get_image(self, *, id: int)->AccidentImage:
-    #     image = await self.db.fetch_one(query=GET_ACCIDENT_IMAGE_BY_ID_QUERY, values={'id':id})
-    #     return AccidentImage(**image)
+
         

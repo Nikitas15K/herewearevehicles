@@ -3,9 +3,7 @@ from enum import Enum
 import json
 from pydantic import BaseModel, validator
 from app.models.core import DateTimeModelMixin,IDModelMixin
-from app.models.vehicles import VehiclesPublic
-from app.models.users import ProfilePublic
-from app.models.insurance import InsurancePublic
+
 
 # class BytesBaseModel(BaseModel):
 #     @validator('*')
@@ -65,5 +63,4 @@ class Only_Sketch(BaseModel):
 
 
 
-# class AccidentImage(BaseModel):
-#     image: bytes
+
