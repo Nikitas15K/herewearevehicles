@@ -188,8 +188,8 @@ def create_accident_statement_table() -> None:
         sa.Column("insurance_id", sa.Integer, sa.ForeignKey('insurance.id', ondelete="CASCADE")),
         sa.Column("caused_by", sa.Text),
         sa.Column("comments", sa.Text),
-        # sa.Column("diagram_sketch", sa.Text),
-        # sa.Column("image", BYTEA),
+        sa.Column("car_damage",sa.Text, nullable=False, server_default="Not declared"),
+        sa.Column("done", sa.Boolean(), nullable=False, server_default="False"),
         *timestamps(),
     )
     op.execute(

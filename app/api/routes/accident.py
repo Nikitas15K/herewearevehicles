@@ -11,7 +11,7 @@ from starlette.status import (
 )
 from app.models.users import UserPublic, UserInDB
 from app.models.accidents import AccidentPublic, AccidentCreate
-from app.models.accident_statement import Accident_statement_Create, Accident_statement_Public, Accident_statement_Update
+from app.models.accident_statement import Accident_statement_Create, Accident_statement_Public, Accident_statement_Update, Accident_Statement_Detection_Update
 from app.models.temporary_accident_driver_data import Temporary_Data_Create, Temporary_Data_InDB, Temporary_Data_Public, Temporary_Data_Update
 from app.models.accident_statement_sketch import Accident_Sketch_InDB, Accident_Sketch_Public, Accident_Sketch_Update, Accident_Sketch_Create
 from app.db.repositories.vehicles import VehiclesRepository
@@ -180,6 +180,22 @@ async def update_accident_statement(
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please can not update this stmt")
 
     updated_stmt = await accident_stmt_repo.update_accident_statement(accident_id= accident_id, user_id = current_user.id, accident_statement_update = accident_statement_update)
+    return updated_stmt
+
+@router.put("/accident_stmt_detection/{accident_id}")
+async def update_accident_statement_detection(
+    accident_id: int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    accident_statement_update: Accident_Statement_Detection_Update = Body(..., embed=True),
+    accident_stmt_repo: AccidentStatementRepository = Depends(get_repository(AccidentStatementRepository)),
+    ) -> Accident_statement_Public:
+    
+    accident_stmt = await accident_stmt_repo.get_accident_statement_by_accident_id_user_id(accident_id= accident_id, user_id = current_user.id)
+
+    if not accident_stmt:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please can not update this stmt")
+
+    updated_stmt = await accident_stmt_repo.update_accident_statement_detection(accident_id= accident_id, user_id = current_user.id, accident_statement_update = accident_statement_update)
     return updated_stmt
 
 

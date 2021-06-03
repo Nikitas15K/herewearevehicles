@@ -46,9 +46,14 @@ class Accident_statement_Create(Accident_statement_Base):
     vehicle_id: int
     accident_id: int
     insurance_id: int
+    done: bool = False
 
 class Accident_statement_Update(Accident_statement_Base):
     pass
+
+
+class Accident_Statement_Detection_Update(BaseModel):
+    car_damage:Optional[str]
 
 
 class Accident_statement_InDB(IDModelMixin, DateTimeModelMixin, Accident_statement_Base):
@@ -56,7 +61,9 @@ class Accident_statement_InDB(IDModelMixin, DateTimeModelMixin, Accident_stateme
     vehicle_id: int
     accident_id: int
     insurance_id: int
-    
+    car_damage:Optional[str]
+    done: bool
+
 class Accident_statement_Public(Accident_statement_InDB):
     vehicle: Optional[VehiclesPublic]
     user: Optional[ProfilePublic]
