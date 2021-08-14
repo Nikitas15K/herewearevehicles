@@ -36,6 +36,8 @@ GET_ACCIDENTS_BY_TEMPORARY_DRIVER_EMAIL_QUERY = """
     WHERE tadd.driver_email = :driver_email ;
 """
 
+
+
 GET_ACCIDENT_BY_TEMPORARY_DRIVER_EMAIL_ACCIDENT_ID_QUERY = """
     SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
@@ -60,6 +62,30 @@ GET_ACCIDENT_BY_USER_ID_WITH_STATEMENT_QUERY = """
     WHERE a.id = :id AND acst.user_id= :user_id ;
 """
 
+GET_ALL_ACCIDENTS_BY_INSURANCE_COMPANY = """
+SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+FROM accident AS a 
+INNER JOIN 
+(select acs.accident_id from accident_statement as acs
+inner join (
+select i.id 
+from insurance as i inner join insurance_company as ic
+on i.insurance_company_id=ic.id
+where ic.email = :insurance_company_email) as i1
+on acs.insurance_id = i1.id) as acs1
+on acs1.accident_id=a.id
+
+union
+
+SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
+FROM accident AS a 
+INNER JOIN 
+(select tadd.accident_id from temporary_accident_driver_data as tadd
+where tadd.insurance_email = :insurance_company_email) as tadd1
+on a.id = tadd1.accident_id
+
+"""
+
 GET_ACCIDENTS_BY_USER_STMT_ID_QUERY = """
     SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
@@ -82,6 +108,7 @@ class AccidentRepository(BaseRepository):
         super().__init__(db)
         self.accident_statement_repo = AccidentStatementRepository(db)    
         self.temporary_accident_driver_data_repo = TemporaryRepository(db) 
+
 
     async def create_accident_for_vehicle(self, *, new_accident: AccidentCreate , vehicle_id: int, id:int) -> AccidentInDB:
 
@@ -179,6 +206,16 @@ class AccidentRepository(BaseRepository):
                 accidents_list.append(accident_populated)
         return accidents_list 
 
+
+    async def get_all_accidents_by_insurance_company(self,*, insurance_company_email:EmailStr, populate: bool = True) ->List[AccidentPublic]:
+        accident_records = await self.db.fetch_all(query=GET_ALL_ACCIDENTS_BY_INSURANCE_COMPANY, values={"insurance_company_email":insurance_company_email})
+        accidents_list = []
+        for accident_record in accident_records:
+            accident = AccidentInDB(**accident_record)
+            if populate:
+                accident_populated = await self.populate_accident(accident = accident)
+                accidents_list.append(accident_populated)
+        return accidents_list 
 
     async def update_closed_case(self, *, id: int, populate: bool = True)->AccidentPublic:
         accident = await self.get_accident_by_id(id= id)

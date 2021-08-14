@@ -42,5 +42,5 @@ class VehiclesCreate(VehiclesModel):
 
 class VehiclesPublic(VehiclesModel, IDModelMixin, DateTimeModelMixin):
     insurance: Optional[InsurancePublic]
-    roles: Optional[List[RolePublic]]
+    roles: Optional[RolePublic]
 

@@ -25,7 +25,7 @@ async def get_all_vehicles(
         current_user: UserPublic = Depends(get_current_active_user),
         vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository))
 ) -> List[VehiclesPublic]:
-    if current_user.is_superuser:
+    if current_user.is_master: 
         return await vehicles_repo.get_all_vehicles()
     else:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="No access")
@@ -43,20 +43,13 @@ async def create_new_vehicle(
 @router.get("/no/{id}/", name="vehicles:get-vehicle-by-id")
 async def get_vehicle_by_id(id: int,
     current_user: UserPublic = Depends(get_current_active_user),
-    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
-    roles_repo: RolesRepository = Depends(get_repository(RolesRepository))):
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository))):
 
     vehicle = await vehicles_repo.get_vehicle_by_id(id=id, user_id = current_user.id)
     users_list = []
     if not vehicle:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No vehicle found with that id")
-    else:
-        for i in range(len(vehicle.roles)): 
-            users_list.append(vehicle.roles[i].user_id)
-    if current_user.id in users_list:
-        return vehicle
-    else:
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Please select one of your vehicles")
+    return vehicle
 
 
 @router.get("/", response_model= List, name="vehicles:get-all-vehicles-by-user-id")
@@ -65,6 +58,8 @@ async def get_all_vehicles_by_user_id(
     vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
 ) -> List:
     if current_user.is_superuser:
+        return await vehicles_repo.get_all_vehicles_by_insurance_company(insurance_company_email=current_user.email)
+    elif current_user.is_master:
         return await vehicles_repo.get_all_vehicles()
     else:
         return await vehicles_repo.get_all_vehicles_by_user_id(id = current_user.id)
@@ -115,6 +110,23 @@ async def update_role_by_vehicle_id(vehicle_id : int,
 
     role = await roles_repo.update_role(vehicle_id = vehicle_id, user_id = current_user.id, role_update = role_update)
     return role
+
+@router.post("/{vehicle_id}/role", response_model=RolePublic, name="role:update-role-by-vehicle-id")
+async def new_user_role_by_vehicle_id(vehicle_id : int,
+    current_user: UserPublic = Depends(get_current_active_user),
+    vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)),
+    new_role: RoleCreate = Body(..., embed=True),
+    roles_repo: RolesRepository = Depends(get_repository(RolesRepository))
+    ) -> RolePublic:
+    vehicle = await vehicles_repo.get_vehicle_by_id(id= vehicle_id, user_id = current_user.id)
+
+    if not vehicle:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Please select one of your vehicles")
+    new_role.vehicle_id=vehicle_id
+    new_role.user_id=current_user.id
+    role = await roles_repo.create_new_role_of_user_for_vehicle(new_role= new_role,vehicle_id = vehicle_id, user_id = current_user.id)
+    return role
+
 
 
 # @router.get("/newest/", response_model= List[dict], name="vehicles:get-all-vehicles-with-newest-insurance")

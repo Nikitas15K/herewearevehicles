@@ -1,11 +1,13 @@
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 from pydantic import BaseModel, validator
 from app.models.core import DateTimeModelMixin,IDModelMixin
 from app.models.vehicles import VehiclesPublic
 from app.models.users import ProfilePublic
+from app.models.roles import RolePublic
 from app.models.insurance import InsurancePublic
 from app.models.accident_statement_sketch import Only_Sketch
+from app.models.accident_image import Accident_Image_Public
 
 class BytesBaseModel(BaseModel):
     @validator('*')
@@ -46,6 +48,7 @@ class Accident_statement_Create(Accident_statement_Base):
     vehicle_id: int
     accident_id: int
     insurance_id: int
+    role_id:int
     done: bool = False
 
 class Accident_statement_Update(Accident_statement_Base):
@@ -61,15 +64,18 @@ class Accident_statement_InDB(IDModelMixin, DateTimeModelMixin, Accident_stateme
     vehicle_id: int
     accident_id: int
     insurance_id: int
+    role_id:int
     car_damage:Optional[str]
     done: bool
 
 class Accident_statement_Public(Accident_statement_InDB):
     vehicle: Optional[VehiclesPublic]
     user: Optional[ProfilePublic]
+    role: Optional[RolePublic]
     insurance: Optional[InsurancePublic]
     sketch: Optional[Only_Sketch]
-    image_count: int
+    images: Optional[List[Accident_Image_Public]]
+
 
 class AccidentImage(BaseModel):
     image: bytes

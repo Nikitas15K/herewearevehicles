@@ -6,6 +6,7 @@ from app.models.core import DateTimeModelMixin,IDModelMixin
 class RoleType(str, Enum):
     Owner = "owner"
     User = "user"
+    NotUser = "not a user anymore"
 
 class RoleBase(BaseModel):
     role: Optional[RoleType] = "owner"

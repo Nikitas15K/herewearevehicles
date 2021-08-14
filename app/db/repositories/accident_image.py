@@ -7,11 +7,22 @@ from databases import Database
 import json
 from typing import List
 
-GET_ACCIDENT_IMAGE_BY_STATEMENT_ID_QUERY = """
+GET_ACCIDENT_IMAGES_BY_STATEMENT_ID_QUERY = """
+    SELECT id, statement_id, created_at, updated_at
+    FROM accident_statement_image
+    WHERE statement_id = :statement_id;
+"""
+
+GET_ACCIDENT_IMAGE_BY_ID_QUERY = """
     SELECT image
     FROM accident_statement_image
-    WHERE statement_id = :statement_id
-    ORDER BY ID DESC LIMIT 1;
+    WHERE id = :id;
+"""
+
+GET_STATEMENT_ID_BY_ID_QUERY = """
+    SELECT id, statement_id, created_at, updated_at
+    FROM accident_statement_image
+    WHERE id = :id;
 """
 
 ADD_ACCIDENT_IMAGE_QUERY = """
@@ -34,9 +45,23 @@ class AccidentImageRepository(BaseRepository):
         new_image = await self.db.fetch_one(query=ADD_ACCIDENT_IMAGE_QUERY, values=query_values)
         return Accident_Image_InDB(**new_image)
 
-    async def get_image(self, *, statement_id: int)->AccidentImage:
-        image = await self.db.fetch_one(query=GET_ACCIDENT_IMAGE_BY_STATEMENT_ID_QUERY, values={'statement_id': statement_id})
+    async def get_image(self, *, id: int)->AccidentImage:
+        image = await self.db.fetch_one(query=GET_ACCIDENT_IMAGE_BY_ID_QUERY, values={'id': id})
         return AccidentImage(**image)
+
+    async def get_statement(self, *, id: int)->Accident_Image_InDB:
+        image_data = await self.db.fetch_one(query=GET_STATEMENT_ID_BY_ID_QUERY, values={'id': id})
+        if not image_data:
+            return None
+        return Accident_Image_InDB(**image_data)
+
+    async def get_image_data(self, *, statement_id: int)->List[Accident_Image_InDB]:
+        image_data_result = await self.db.fetch_all(query=GET_ACCIDENT_IMAGES_BY_STATEMENT_ID_QUERY, values={'statement_id': statement_id})
+        image_data_list = []
+        for image_data in image_data_result:
+            image_data = Accident_Image_InDB(**image_data)
+            image_data_list.append(image_data)
+        return image_data_list
     
     async def get_image_count(self, *, statement_id: int)->List[int]:
         ids= await self.db.fetch_all(query=GET_ACCIDENT_IMAGE_COUNT_QUERY, values={'statement_id': statement_id})
