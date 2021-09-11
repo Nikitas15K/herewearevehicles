@@ -183,19 +183,6 @@ class AccidentStatementRepository(BaseRepository):
                                                     values={"accident_id": accident_id, "user_id": user_id })
             return await self.populate_accident_statement(accident_statement = Accident_statement_InDB(**completed_accident_statement))
             
-      
-        # stmt_update_params = accident_statement.copy(update=accident_statement_update.dict(exclude_unset=True))
-        # print(stmt_update_params)
-        # try:
-        #     updated_stmt = await self.db.fetch_one(
-        #         query=UPDATE_ACCIDENT_STATEMENT_DETECTION_FOR_ACCIDENT_QUERY, 
-        #         values= stmt_update_params.dict(exclude={"id","created_at", "updated_at", "vehicle_id", "insurance_id", "caused_by", "comments" , "done"}),
-        #         )
-        #     print(updated_stmt)
-        #     return updated_stmt
-        # except Exception as e:
-        #     print(e)
-        #     raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid update params.")
 
 
 

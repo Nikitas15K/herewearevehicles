@@ -37,9 +37,6 @@ class VehiclesCreate(VehiclesModel):
     model: str
     manufacture_year: int = Field(..., gt=1970, le = datetime.date.today().year)
 
-# class VehiclesUpdate(VehiclesModel):
-#     pass
-
 class VehiclesPublic(VehiclesModel, IDModelMixin, DateTimeModelMixin):
     insurance: Optional[InsurancePublic]
     roles: Optional[RolePublic]

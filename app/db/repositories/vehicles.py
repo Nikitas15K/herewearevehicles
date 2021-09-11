@@ -121,22 +121,6 @@ on v.id = i1.vehicle_id
 
 """
 
-# GET_ALL_VEHICLES_QUERY_WITH_NEWEST_INSURANCE = """
-# SELECT v.id, v.sign, v.type, v.model, v.manufacture_year, v.created_at, v.updated_at,
-#         i.id AS insurance_id, i.number, i.start_date, i.expire_date, i.damage_coverance, i.insurance_company_id, 
-#         i.created_at AS insurance_create_at, i.updated_at AS insurance_updated_at
-#     FROM vehicles v
-# INNER JOIN
-# 	(SELECT id, number, i1.start_date AS start_date,i2.expire_date AS expire_date, i1.vehicle_id, i1.damage_coverance, insurance_company_id, created_at, updated_at
-# 		FROM 
-# 	 		(SELECT id, number, start_date, expire_date, vehicle_id, damage_coverance, insurance_company_id, created_at, updated_at
-# 				FROM insurance ORDER BY id) AS i1
-# INNER JOIN 
-# 	 (SELECT vehicle_id,MAX(expire_date) AS expire_date FROM insurance group by vehicle_id) AS i2
-# 			ON i1.expire_date = i2.expire_date AND i1.vehicle_id = i2.vehicle_id)
-# 		AS i
-# 		ON v.id = i.vehicle_id;
-# """
 
 
 class VehiclesRepository(BaseRepository):
@@ -188,7 +172,6 @@ class VehiclesRepository(BaseRepository):
    
     async def populate_vehicle(self, *, vehicle: VehiclesInDB, user_id: int) -> VehiclesInDB:
         return VehiclesPublic(
-            # unpack the vehicle in db instance,
             **vehicle.dict(),
             insurance=await self.insurances_repo.get_last_created_insurance_by_vehicle_id(vehicle_id=vehicle.id),
             roles=await self.roles_repo.get_user_role_by_vehicle_user_id(vehicle_id=vehicle.id, user_id=user_id),
@@ -201,15 +184,8 @@ class VehiclesRepository(BaseRepository):
             return None
         else:
             vehicle = VehiclesInDB(**vehicle_record)
-            # if populate:
-            #     return await self.populate_vehicle(vehicle = vehicle, user_id=user_id)
         return vehicle
 
-    
-    # async def get_all_vehicles_with_newest_insurance(self):
-    #     vehicle_records = await self.db.fetch_all(query=GET_ALL_VEHICLES_QUERY_WITH_NEWEST_INSURANCE)
-    #     return vehicle_records
- 
     async def get_vehicle_by_user_id_digit(self, *, sign: str, user_id:int, populate: bool = True):
         sign_digit =int(''.join(filter(str.isdigit, sign)))
         print(sign_digit)

@@ -126,22 +126,3 @@ async def new_user_role_by_vehicle_id(vehicle_id : int,
     new_role.user_id=current_user.id
     role = await roles_repo.create_new_role_of_user_for_vehicle(new_role= new_role,vehicle_id = vehicle_id, user_id = current_user.id)
     return role
-
-
-
-# @router.get("/newest/", response_model= List[dict], name="vehicles:get-all-vehicles-with-newest-insurance")
-# async def get_all_vehicles_with_newest_insurance(
-#         vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository))
-# ) -> List[dict]:
-#     return await vehicles_repo.get_all_vehicles_with_newest_insurance()
-
-
-# @router.get("/mod/{sign}/", response_model=VehiclesPublic, name="vehicles:get-vehicle-by-sign")
-# async def get_vehicle_by_sign(sign: str, vehicles_repo: VehiclesRepository = Depends(get_repository(VehiclesRepository)))\
-#                                         -> VehiclesPublic:
-#     vehicle = await vehicles_repo.get_vehicle_by_sign(sign=sign)
-
-#     if not vehicle:
-#         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No vehicle found with that id")
-
-#     return vehicle

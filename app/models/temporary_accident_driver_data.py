@@ -20,9 +20,6 @@ class Temporary_Data_Create(Temporary_Data_Base):
     insurance_number: str
     insurance_email: EmailStr
 
-# class Temporary_Data_Update(Temporary_Data_Base):
-#     answered: bool
-
 class Temporary_Data_Update(Temporary_Data_Base):
     driver_full_name: Optional[str]
     driver_email: Optional[EmailStr]
