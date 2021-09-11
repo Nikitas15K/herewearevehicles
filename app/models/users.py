@@ -55,3 +55,7 @@ class UserInDB(IDModelMixin, DateTimeModelMixin, UserBase):
 class UserPublic(IDModelMixin, DateTimeModelMixin, UserBase):
     access_token: Optional[AccessToken]
     profile: Optional[ProfilePublic]
+
+class ProfileSearch(BaseModel):
+    user_id: int
+    email: EmailStr

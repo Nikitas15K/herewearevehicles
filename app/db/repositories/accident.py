@@ -5,6 +5,7 @@ from app.models.accidents import AccidentPublic, AccidentInDB, AccidentCreate
 from app.models.temporary_accident_driver_data import Temporary_Data_InDB
 from app.db.repositories.base import BaseRepository
 from app.models.accident_statement import Accident_statement_Create
+from app.models.users import ProfileSearch
 from app.db.repositories.accident_statement import AccidentStatementRepository
 from app.db.repositories.temporary_accident_driver_data import TemporaryRepository
 from databases import Database
@@ -227,6 +228,30 @@ class AccidentRepository(BaseRepository):
             if populate:
                 accident_populated = await self.populate_accident(accident = accident_closed)
             return accident_populated 
+
+    async def get_accidents_by_user_id_master(self, *, user_search:ProfileSearch, populate: bool = True)->List[AccidentPublic]:
+        accident_records = await self.db.fetch_all(query=GET_ACCIDENTS_BY_USER_STMT_ID_QUERY, values={"user_id": user_search.user_id})
+        accidents_declares = await self.db.fetch_all(query=GET_ACCIDENTS_BY_TEMPORARY_DRIVER_EMAIL_QUERY, values={"driver_email": user_search.email})
+        accidents_list = []
+        accident_id_list = []
+        if not accident_records and not accidents_declares:
+            return None
+        else:
+            for accident_record in accident_records:
+                accident_id_list.append(accident_record["id"])
+                accident = AccidentInDB(**accident_record)
+                if populate:
+                    accident_populated = await self.populate_accident(accident = accident)
+                    accidents_list.append(accident_populated)
+            for accident_declare in accidents_declares:
+                if accident_declare['id'] in accident_id_list:
+                    pass
+                else:
+                    accident = AccidentInDB(**accident_declare)
+                    if populate:
+                        accident_populated = await self.populate_accident(accident = accident)
+                        accidents_list.append(accident_populated)
+        return accidents_list
 
 
 

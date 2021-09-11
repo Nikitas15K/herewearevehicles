@@ -1,5 +1,6 @@
 from typing import List
 import datetime
+from pydantic import EmailStr
 from fastapi import APIRouter, Body, Depends, HTTPException, Form, File, UploadFile
 from starlette.status import (
     HTTP_200_OK,
@@ -9,7 +10,7 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
 )
-from app.models.users import UserPublic, UserInDB
+from app.models.users import UserPublic, UserInDB, ProfileSearch
 from app.models.accidents import AccidentPublic, AccidentCreate
 from app.models.accident_statement import Accident_statement_Create, Accident_statement_Public, Accident_statement_Update, Accident_Statement_Detection_Update
 from app.models.temporary_accident_driver_data import Temporary_Data_Create, Temporary_Data_InDB, Temporary_Data_Public, Temporary_Data_Update
@@ -118,6 +119,21 @@ async def get_accidents_by_id(
         if not accidents:
             raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No accident found")
         return accidents
+
+@router.post("/useraccidents", response_model=List[AccidentPublic], name="accident:master-get-accidents-by-user-id")
+async def get_master_accidents_by_id(
+    searched_user: ProfileSearch = Body(..., embed=True),
+    # current_user: UserPublic = Depends(get_current_active_user),
+    accident_repo: AccidentRepository = Depends(get_repository(AccidentRepository)),
+    ) -> List[AccidentPublic]:
+    print(searched_user)
+    # if current_user.is_master:
+    accidents = await accident_repo.get_accidents_by_user_id_master(user_search = searched_user)
+    if not accidents:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No accident found")
+    return accidents
+    # else:
+    #     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="You have not access to this accident")
 
 
 @router.post("/accident_stmt/{accident_id}",name="accident:add-accident-stmt")
