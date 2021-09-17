@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: herewearevehicles-deployment
+  namespace: here-we-are
+  labels:
+    app: herewearevehicles
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: herewearevehicles
+  template:
+    metadata:
+      labels:
+        app: herewearevehicles
+    spec:
+      containers:
+        - name: herewearevehicles
+          image: herewearevehicles:dev
+          imagePullPolicy: Never
+          command: ["uvicorn"]
+          args:
+            [
+              "app.api.server:app",
+              "--host",
+              "0.0.0.0",
+              "--port",
+              "8001",
+              "--workers",
+              "2",
+            ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: herewearevehicles-app
+  namespace: here-we-are
+  labels:
+    app: herewearevehicles
+spec:
+  type: LoadBalancer
+  ports:
+    - name: web
+      port: 8001
+      targetPort: 8001
+  selector:
+    app: herewearevehicles

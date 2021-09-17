@@ -38,7 +38,6 @@ GET_ACCIDENTS_BY_TEMPORARY_DRIVER_EMAIL_QUERY = """
 """
 
 
-
 GET_ACCIDENT_BY_TEMPORARY_DRIVER_EMAIL_ACCIDENT_ID_QUERY = """
     SELECT a.id AS id, a.date, a.city, a.address, a.injuries, a.road_problems, a.closed_case, a.created_at, a.updated_at
     FROM accident AS a 
@@ -101,7 +100,6 @@ UPDATE_CLOSED_CASE_QUERY ="""
     WHERE id = :id
     RETURNING id, date, city, address, injuries, road_problems, closed_case, created_at, updated_at;
     """
-
 
 class AccidentRepository(BaseRepository):
 
@@ -167,10 +165,6 @@ class AccidentRepository(BaseRepository):
             if populate:
                 return await self.populate_accident(accident = accident)
         return accident
-
-    # async def get_all_accidents_by_temporary_driver_email(self, *, driver_email: EmailStr)-> List[Temporary_Data_InDB]:
-    #     accidents= await self.db.fetch_all(query=GET_ACCIDENTS_BY_TEMPORARY_DRIVER_EMAIL_QUERY, values={"driver_email": email})
-    #     return accidents
 
     async def get_accidents_by_user_id(self, *, user_id:int, email:EmailStr, populate: bool = True)->List[AccidentPublic]:
         accident_records = await self.db.fetch_all(query=GET_ACCIDENTS_BY_USER_STMT_ID_QUERY, values={"user_id":user_id})

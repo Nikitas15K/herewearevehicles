@@ -1,0 +1,94 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: herewearevehicles-postgres-secret
+type: Opaque
+stringData:
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_SERVER: db
+  POSTGRES_DB: postgres
+---
+apiVersion: v1
+kind: PersistentVolume # Create a PV
+metadata:
+  name: herewearevehicles-postgres-pv-volume
+  labels:
+    type: local
+    app: herewearevehicles-postgres
+spec:
+  storageClassName: manual # Storage class. A PV Claim requesting the same storageClass can be bound to this volume.
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath: # hostPath PersistentVolume is used for development and testing. It uses a file/directory on the Node to emulate network-attached storage
+    path: "/mnt/data/vehicles/"
+  persistentVolumeReclaimPolicy: Retain # Retain the PV even after PVC is deleted.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim # Create a PersistentVolumeClaim to request a PersistentVolume storage
+metadata: # Claim name and labels
+  name: herewearevehicles-postgres-pv-claim
+  labels:
+    app: herewearevehicles-postgres
+spec: # Access mode and resource limits
+  storageClassName: manual # Request a certain storage class
+  accessModes:
+    - ReadWriteMany # ReadWriteMany means the volume can be mounted as read-write by many Nodes
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment # Type of the kubernetes resource
+metadata:
+  name: herewearevehicles-postgres # Name of the deployment
+  labels: # Labels applied to this deployment
+    app: herewearevehicles-postgres
+spec:
+  selector:
+    matchLabels: # This deployment applies to the Pods matching the specified labels
+      app: herewearevehicles-postgres
+      tier: postgres
+  replicas: 1
+  template: # Template for the Pods in this deployment
+    metadata:
+      labels: # Labels to be applied to the Pods in this deployment
+        app: herewearevehicles-postgres
+        tier: postgres
+    spec: # The spec for the containers that will be run inside the Pods in this deployment
+      containers:
+        - image: postgres:12.1-alpine # The container image
+          name: postgres
+          imagePullPolicy: "IfNotPresent"
+          envFrom: # Get the environmental variables from a secret file whose name is "postgres-secret"
+            - secretRef:
+                name: herewearevehicles-postgres-secret
+          ports:
+            - containerPort: 5433 # The port that the container exposes
+              name: postgres
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data/vehicles/
+              name: herewearevehicles-postgres-persistent-storage # This name should match the name specified in `volumes.name`
+      volumes: # A PersistentVolume is mounted as a volume to the Pod
+        - name: herewearevehicles-postgres-persistent-storage
+          persistentVolumeClaim:
+            claimName: herewearevehicles-postgres-pv-claim
+---
+apiVersion: v1 # API version
+kind: Service # Type of kubernetes resource
+metadata:
+  name: herewearevehicles-postgres # Name of the resource
+  labels: # Labels that will be applied to the resource
+    app: herewearevehicles-postgres
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5433
+      targetPort: 5432
+      protocol: TCP
+  selector: # Selects any Pod with labels `app=fullstack-postgres,tier=postgres`
+    app: herewearevehicles-postgres
+    tier: postgres
